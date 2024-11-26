@@ -5,8 +5,10 @@ import {
   NodeCategory,
   NodeData,
   NodeInitOptions,
+  InputType,
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
+import { PromptTemplate } from "@langchain/core/prompts";
 
 export const OpenAINode: BaseNode = {
   id: "openai",
@@ -55,9 +57,14 @@ export const OpenAINode: BaseNode = {
     },
   ],
   inputs: {
-    min: 0,
-    max: 1,
-    types: ["text"],
+    prompt: {
+      required: false,
+      description: "Dynamic prompt to override the default prompt",
+    },
+    context: {
+      required: false,
+      description: "Additional context to be injected into the prompt",
+    },
   },
   outputs: [
     {
@@ -79,9 +86,25 @@ export const OpenAINode: BaseNode = {
     });
   },
 
-  async execute(instance: ChatOpenAI, nodeData?: NodeData) {
-    const prompt = nodeData?.parameters?.prompt || "";
-    const response = await instance.invoke(prompt);
+  async execute(instance: ChatOpenAI, nodeData?: NodeData, inputs?: Record<InputType, string>) {
+    // Get the prompt from inputs or parameters
+    const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
+    const context = inputs?.context || "";
+
+    // Create a prompt template that includes context if available
+    const template = context 
+      ? `Context: {context}\n\nPrompt: {prompt}`
+      : "{prompt}";
+
+    const promptTemplate = PromptTemplate.fromTemplate(template);
+    
+    // Format the prompt with the variables
+    const formattedPrompt = await promptTemplate.format({
+      prompt: promptText,
+      context: context,
+    });
+
+    const response = await instance.invoke(formattedPrompt);
     return response.content as string;
   },
 };
