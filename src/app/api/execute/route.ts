@@ -4,6 +4,7 @@ import { Node, Edge } from "reactflow";
 import { ExecutionStep } from "@/components/ExecutionLog";
 import { OpenAINode } from "@/nodes/llm/openai/schema";
 import { AnthropicNode } from "@/nodes/llm/anthropic/schema";
+import { InputType } from "@/types/nodes";
 
 // Build execution graph
 function buildExecutionGraph(nodes: Node[], edges: Edge[]) {
@@ -58,10 +59,30 @@ function buildExecutionGraph(nodes: Node[], edges: Edge[]) {
   return { executionLevels, nodeMap };
 }
 
+// Get node inputs from incoming edges
+function getNodeInputs(
+  nodeId: string,
+  edges: Edge[],
+  results: Map<string, string>
+): Record<InputType, string> {
+  const inputs: Partial<Record<InputType, string>> = {};
+  
+  edges
+    .filter((edge) => edge.target === nodeId)
+    .forEach((edge) => {
+      const sourceResult = results.get(edge.source);
+      if (sourceResult && edge.targetHandle) {
+        inputs[edge.targetHandle as InputType] = sourceResult;
+      }
+    });
+
+  return inputs as Record<InputType, string>;
+}
+
 // Execute a single node
 async function executeNode(
   node: Node,
-  input: string,
+  inputs: Record<InputType, string>,
   encoder: TextEncoder,
   controller: ReadableStreamDefaultController,
   stepId: string
@@ -95,7 +116,7 @@ async function executeNode(
     }
 
     const instance = await schemaNode.initialize(node.data, {});
-    result = await schemaNode.execute(instance, node.data);
+    result = await schemaNode.execute(instance, node.data, inputs);
 
     // Update step status to completed
     controller.enqueue(
@@ -150,10 +171,7 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const { executionLevels, nodeMap } = buildExecutionGraph(
-            nodes,
-            edges
-          );
+          const { executionLevels, nodeMap } = buildExecutionGraph(nodes, edges);
           const results = new Map<string, string>();
 
           // Execute nodes level by level
@@ -176,14 +194,8 @@ export async function POST(request: Request) {
                     (step: ExecutionStep) => step.nodeId === nodeId
                   )?.id || uuidv4();
 
-                // Get inputs from previous nodes
-                const incomingEdges = edges.filter(
-                  (edge) => edge.target === nodeId
-                );
-                const inputs = incomingEdges
-                  .map((edge) => results.get(edge.source))
-                  .filter(Boolean)
-                  .join("\n\n");
+                // Get inputs from incoming edges
+                const inputs = getNodeInputs(nodeId, edges, results);
 
                 try {
                   const result = await executeNode(
