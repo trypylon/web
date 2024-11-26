@@ -10,9 +10,14 @@ export enum NodeCategory {
   OUTPUT = 'Output'
 }
 
+export enum InputType {
+  PROMPT = 'prompt',
+  CONTEXT = 'context'
+}
+
 export interface NodePort {
   id: string;
-  type: string;
+  type: InputType;
   label: string;
   schema?: z.ZodType<any>;
 }
@@ -40,6 +45,11 @@ export interface NodeCredential {
   description?: string;
 }
 
+export interface NodeInput {
+  type: InputType;
+  value?: string;
+}
+
 export interface BaseNode {
   id: string;
   type: string;
@@ -52,9 +62,14 @@ export interface BaseNode {
   credentials?: NodeCredential[];
   
   inputs: {
-    min?: number;
-    max?: number;
-    types: string[];
+    prompt?: {
+      required: boolean;
+      description: string;
+    };
+    context?: {
+      required: boolean;
+      description: string;
+    };
   };
   outputs: {
     type: string;
@@ -64,7 +79,7 @@ export interface BaseNode {
   preserveState?: boolean;
   
   initialize: (nodeData: NodeData, options: NodeInitOptions) => Promise<any>;
-  execute: (nodeInstance: any, nodeData?: NodeData) => Promise<any>;
+  execute: (nodeInstance: any, nodeData?: NodeData, inputs?: Record<InputType, string>) => Promise<any>;
   cleanup?: (nodeInstance: any) => Promise<void>;
 }
 
@@ -73,6 +88,7 @@ export interface NodeData {
   type: string;
   parameters: Record<string, any>;
   credentials?: Record<string, any>;
+  inputs?: Record<InputType, NodeInput>;
 }
 
 export interface NodeInitOptions {
