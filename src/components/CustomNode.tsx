@@ -287,7 +287,26 @@ export function CustomNode({
                   <label className="text-sm text-gray-700 dark:text-gray-300">
                     {param.label}
                   </label>
-                  {param.type === "number" ? (
+                  {param.type === "select" ? (
+                    <select
+                      value={data.parameters?.[param.name] || param.default}
+                      onChange={(e) =>
+                        handleParameterChange(
+                          param.name,
+                          param.name === "dimensions"
+                            ? parseInt(e.target.value)
+                            : e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {param.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : param.type === "number" ? (
                     <input
                       type="number"
                       value={data.parameters?.[param.name] || ""}

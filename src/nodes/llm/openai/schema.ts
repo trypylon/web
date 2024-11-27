@@ -9,6 +9,15 @@ import {
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
+import {
+  RunnableSequence,
+  RunnablePassthrough,
+} from "@langchain/core/runnables";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { BaseMessage } from "@langchain/core/messages";
+import { PineconeStore } from "@langchain/pinecone";
+import { Pinecone } from "@pinecone-database/pinecone";
+import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
 
 export const OpenAINode: BaseNode = {
   id: "openai",
@@ -48,6 +57,49 @@ export const OpenAINode: BaseNode = {
       description: "The system prompt that guides the model behavior",
       validation: z.string().min(1),
     },
+    {
+      name: "useVectorStore",
+      label: "Use Vector Store",
+      type: "boolean",
+      default: false,
+      description: "Enable RAG with vector store",
+    },
+    {
+      name: "vectorStoreIndex",
+      label: "Vector Store Index",
+      type: "asyncSelect",
+      description: "Select your Pinecone index",
+      loadOptions: async () => {
+        const pinecone = new Pinecone({
+          apiKey: process.env.PINECONE_API_KEY!,
+        });
+        const indexes = await pinecone.listIndexes();
+        return indexes?.map((index) => ({
+          label: index.name,
+          value: index.name,
+        }));
+      },
+      validation: z.string().optional(),
+      conditions: [{ field: "useVectorStore", value: true }],
+    },
+    {
+      name: "vectorStoreNamespace",
+      label: "Vector Store Namespace",
+      type: "string",
+      description: "Optional namespace to query",
+      optional: true,
+      validation: z.string().optional(),
+      conditions: [{ field: "useVectorStore", value: true }],
+    },
+    {
+      name: "topK",
+      label: "Results Count",
+      type: "number",
+      default: 3,
+      description: "Number of similar documents to return",
+      validation: z.number().min(1).max(10),
+      conditions: [{ field: "useVectorStore", value: true }],
+    },
   ],
   credentials: [
     {
@@ -72,7 +124,7 @@ export const OpenAINode: BaseNode = {
     vectorstore: {
       required: false,
       description: "Retrieved documents from a vector store for RAG",
-    }
+    },
   },
   outputs: [
     {
@@ -85,45 +137,131 @@ export const OpenAINode: BaseNode = {
     const model = nodeData.parameters.model || "gpt-4";
     const temperature = nodeData.parameters.temperature || 0.7;
 
-    return new ChatOpenAI({
+    const llm = new ChatOpenAI({
       modelName: model,
       temperature,
       openAIApiKey: process.env.OPENAI_API_KEY,
       maxRetries: 3,
       maxConcurrency: 1,
     });
+
+    return { llm };
   },
 
-  async execute(instance: ChatOpenAI, nodeData?: NodeData, inputs?: Record<InputType, string>) {
-    // Get the prompt from inputs or parameters
+  async execute(
+    instance: { llm: ChatOpenAI },
+    nodeData?: NodeData,
+    inputs?: Record<InputType, string>
+  ) {
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
-    const context = inputs?.context || "";
-    const memory = inputs?.memory || "";
-    const vectorstore = inputs?.vectorstore || "";
+    console.log("Initial prompt:", promptText);
 
-    // Build the complete prompt template based on available inputs
-    let template = "{prompt}";
-    const templateVars: Record<string, string> = { prompt: promptText };
+    // Build template and variables based on available inputs
+    let template = "{input}";
+    const inputValues: Record<string, string> = {
+      input: promptText,
+    };
 
-    if (context) {
-      template = "Context:\n{context}\n\nPrompt: {prompt}";
-      templateVars.context = context;
+    // If vector store config is provided, initialize and use it
+    if (inputs?.vectorstore) {
+      console.log("Vector store input received:", inputs.vectorstore);
+
+      try {
+        const vectorStoreConfig = JSON.parse(inputs.vectorstore);
+        console.log("Parsed vector store config:", vectorStoreConfig);
+
+        // Use the vector store's embeddings with specified dimensions
+        const vectorStore = await PineconeStore.fromExistingIndex(
+          vectorStoreConfig.embeddings,
+          {
+            pineconeIndex: vectorStoreConfig.index,
+            namespace: vectorStoreConfig.namespace,
+            dimensions: vectorStoreConfig.dimensions,
+          }
+        );
+
+        // First, use the LLM to create a better search query
+        const queryGenPrompt = PromptTemplate.fromTemplate(
+          `Given the following user request, generate a concise search query that would help find relevant information in a database of movies.
+          Focus on key terms and concepts that would match movie descriptions.
+
+          User Request: {input}
+
+          Search Query:`
+        );
+
+        console.log("Generating search query...");
+        const searchQuery = await instance.llm.invoke(
+          await queryGenPrompt.format({ input: promptText })
+        );
+
+        console.log("Generated search query:", searchQuery.content);
+
+        // Use the generated query to search the vector store
+        console.log("Searching vector store...");
+        const docs = await vectorStore.similaritySearch(
+          searchQuery.content as string,
+          vectorStoreConfig.topK || 3
+        );
+
+        console.log("Retrieved documents:", docs);
+
+        if (!docs || docs.length === 0) {
+          console.log("No documents found in vector store");
+          // Handle the case where no documents are found
+          template = `You are a helpful assistant. The user asked: {input}
+
+Unfortunately, I couldn't find any relevant information in the database. Please provide a general response or suggest alternatives.`;
+        } else {
+          // Now format a response using the retrieved documents
+          template = `You are a helpful assistant with access to a movie database. 
+Use the following retrieved movie information to help answer the user's request.
+If the retrieved movies aren't relevant or sufficient, you can suggest similar movies based on the user's intent.
+
+Retrieved Movie Information:
+{docs}
+
+User Request: {input}
+
+Please provide a friendly, helpful response that directly addresses the user's request.`;
+
+          inputValues.docs = docs.map((doc) => doc.pageContent).join("\n\n");
+          console.log("Formatted docs:", inputValues.docs);
+        }
+      } catch (error) {
+        console.error("Error in vector store processing:", error);
+        // Add more specific error handling
+        if (error.message.includes("dimension")) {
+          throw new Error(
+            `Vector dimension mismatch. Your index requires ${vectorStoreConfig.dimensions} dimensions.`
+          );
+        }
+        throw error;
+      }
     }
 
-    if (memory) {
-      template = "Previous Conversation:\n{memory}\n\n" + template;
-      templateVars.memory = memory;
+    // Add context if available
+    if (inputs?.context) {
+      template = `Additional Context:\n{context}\n\n${template}`;
+      inputValues.context = inputs.context;
     }
 
-    if (vectorstore) {
-      template = "Retrieved Documents:\n{vectorstore}\n\n" + template;
-      templateVars.vectorstore = vectorstore;
+    // Add memory if available
+    if (inputs?.memory) {
+      template = `Conversation History:\n{memory}\n\n${template}`;
+      inputValues.memory = inputs.memory;
     }
+
+    // Create and format the prompt
+    console.log("Final template:", template);
+    console.log("Final input values:", inputValues);
 
     const promptTemplate = PromptTemplate.fromTemplate(template);
-    const formattedPrompt = await promptTemplate.format(templateVars);
-    const response = await instance.invoke(formattedPrompt);
-    
+    const formattedPrompt = await promptTemplate.format(inputValues);
+    console.log("Final formatted prompt:", formattedPrompt);
+
+    // Get response from LLM
+    const response = await instance.llm.invoke(formattedPrompt);
     return response.content as string;
   },
 };

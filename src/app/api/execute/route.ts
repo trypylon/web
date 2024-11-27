@@ -86,6 +86,17 @@ async function executeNode(
   controller: ReadableStreamDefaultController,
   stepId: string
 ) {
+  const schemaNode = getNodeByType(node.data.type);
+  if (!schemaNode) {
+    throw new Error(`Unknown node type: ${node.data.type}`);
+  }
+
+  // Skip execution logging for config-only nodes
+  if (!schemaNode.execute) {
+    const instance = await schemaNode.initialize(node.data, {});
+    return JSON.stringify(instance);
+  }
+
   try {
     // Update step status to running
     controller.enqueue(
@@ -102,11 +113,6 @@ async function executeNode(
         })}\n\n`
       )
     );
-
-    const schemaNode = getNodeByType(node.data.type);
-    if (!schemaNode) {
-      throw new Error(`Unknown node type: ${node.data.type}`);
-    }
 
     const instance = await schemaNode.initialize(node.data, {});
     const result = await schemaNode.execute(instance, node.data, inputs);

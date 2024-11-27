@@ -1,117 +1,141 @@
-import { z } from 'zod';
-import { Database } from 'lucide-react';
-import { BaseNode, NodeCategory, NodeData, NodeInitOptions, InputType } from '@/types/nodes';
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { z } from "zod";
+import { Database } from "lucide-react";
+import {
+  BaseNode,
+  NodeCategory,
+  NodeData,
+  NodeInitOptions,
+} from "@/types/nodes";
 import { PineconeStore } from "@langchain/pinecone";
-import { Pinecone } from "@pinecone-database/pinecone";
+import { Pinecone, Index, IndexList } from "@pinecone-database/pinecone";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { HuggingFaceTransformersEmbeddings } from "@langchain/huggingface-transformers";
 
 export const PineconeVectorStoreNode: BaseNode = {
-  id: 'pinecone-vectorstore',
-  type: 'PineconeVectorStore',
+  id: "pinecone-vectorstore",
+  type: "PineconeVectorStore",
   category: NodeCategory.VECTORSTORE,
-  name: 'Pinecone',
-  description: 'Production-ready vector store using Pinecone',
+  name: "Pinecone",
+  description: "Configure Pinecone vector store for RAG",
   icon: Database,
-  version: '1.0.0',
+  version: "1.0.0",
   parameters: [
     {
-      name: 'indexName',
-      label: 'Index Name',
-      type: 'string',
-      description: 'Name of your Pinecone index',
-      validation: z.string().min(1)
+      name: "indexName",
+      label: "Index Name",
+      type: "asyncSelect",
+      description: "Select your Pinecone index",
+      loadOptions: async () => {
+        const pinecone = new Pinecone({
+          apiKey: process.env.PINECONE_API_KEY!,
+        });
+        const indexes = await pinecone.listIndexes();
+        return Array.from(indexes).map((index: Index) => ({
+          label: index.name,
+          value: index.name,
+        }));
+      },
+      validation: z.string().min(1),
     },
     {
-      name: 'namespace',
-      label: 'Namespace',
-      type: 'string',
-      description: 'Optional namespace for your vectors',
+      name: "dimensions",
+      label: "Vector Dimensions",
+      type: "select",
+      options: [
+        { label: "OpenAI Ada (1536)", value: 1536 },
+        { label: "Standard (1024)", value: 1024 },
+        { label: "OpenAI Small (384)", value: 384 },
+        { label: "Custom 768", value: 768 },
+      ],
+      default: 1536,
+      description: "Vector dimensions of your Pinecone index",
+    },
+    {
+      name: "namespace",
+      label: "Namespace",
+      type: "string",
+      description: "Optional namespace to query",
       optional: true,
-      validation: z.string().optional()
+      validation: z.string().optional(),
     },
     {
-      name: 'documents',
-      label: 'Documents',
-      type: 'string',
-      description: 'Documents to store (one per line)',
-      validation: z.string()
-    },
-    {
-      name: 'query',
-      label: 'Query',
-      type: 'string',
-      description: 'Query to search for similar documents',
-      validation: z.string()
-    },
-    {
-      name: 'topK',
-      label: 'Top K Results',
-      type: 'number',
+      name: "topK",
+      label: "Results Count",
+      type: "number",
       default: 3,
-      description: 'Number of similar documents to return',
-      validation: z.number().min(1).max(10)
-    }
+      description: "Number of similar documents to return",
+      validation: z.number().min(1).max(10),
+    },
   ],
   credentials: [
     {
-      name: 'pineconeApiKey',
+      name: "pineconeApiKey",
       required: true,
-      description: 'Your Pinecone API key'
+      description: "Your Pinecone API key",
     },
     {
-      name: 'pineconeEnvironment',
+      name: "pineconeEnvironment",
       required: true,
-      description: 'Your Pinecone environment'
-    }
+      description: "Your Pinecone environment",
+    },
   ],
-  inputs: {
-    prompt: {
-      required: false,
-      description: "Query to search for similar documents. Overrides the default query parameter."
-    }
-  },
+  inputs: {},
   outputs: [
     {
-      type: 'text',
-      schema: z.string()
-    }
+      type: "vectorstore",
+      schema: z.object({
+        indexName: z.string(),
+        namespace: z.string().optional(),
+        topK: z.number(),
+      }),
+    },
   ],
 
-  async initialize(nodeData: NodeData, options: NodeInitOptions) {
-    const documents = (nodeData.parameters.documents as string)
-      .split('\n')
-      .filter(doc => doc.trim().length > 0);
-
-    const embeddings = new OpenAIEmbeddings({
-      openAIApiKey: process.env.OPENAI_API_KEY
-    });
-
+  async initialize(nodeData: NodeData) {
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!,
-      environment: process.env.PINECONE_ENVIRONMENT!
     });
 
     const index = pinecone.Index(nodeData.parameters.indexName);
 
-    // Create the vector store
-    const vectorStore = await PineconeStore.fromTexts(
-      documents,
-      documents.map((_, i) => ({ id: i.toString() })),
-      embeddings,
-      {
-        pineconeIndex: index,
-        namespace: nodeData.parameters.namespace
-      }
-    );
+    // Get dimensions from either select or custom input
+    const dimensions =
+      nodeData.parameters.dimensions === "custom"
+        ? nodeData.parameters.customDimensions
+        : parseInt(nodeData.parameters.dimensions);
 
-    return vectorStore;
+    const embeddings = {
+      embedQuery: async (text: string) => {
+        const response = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            input: text,
+            model: "text-embedding-ada-002",
+            dimensions: dimensions,
+          }),
+        });
+
+        const result = await response.json();
+        return result.data[0].embedding;
+      },
+    };
+
+    return {
+      indexName: nodeData.parameters.indexName,
+      namespace: nodeData.parameters.namespace,
+      topK: nodeData.parameters.topK || 3,
+      index,
+      embeddings,
+      dimensions,
+    };
   },
 
-  async execute(instance: PineconeStore, nodeData?: NodeData, inputs?: Record<InputType, string>) {
-    const query = inputs?.prompt || nodeData?.parameters?.query || "";
-    const topK = nodeData?.parameters?.topK || 3;
-    
-    const results = await instance.similaritySearch(query, topK);
-    return results.map(doc => doc.pageContent).join("\n\n");
-  }
+  async execute() {
+    // Config-only node, no execution needed
+    return "";
+  },
 };

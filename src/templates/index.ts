@@ -36,9 +36,10 @@ function createTemplateIds(
 
 export const templates: FlowTemplate[] = [
   {
-    id: "rag-example",
-    name: "RAG Example",
-    description: "Simple RAG implementation using Pinecone and GPT-4",
+    id: "philosophical-haiku",
+    name: "Philosophical Haiku",
+    description:
+      "Generate a philosophical haiku using OpenAI and Anthropic models",
     category: "Basic",
     ...createTemplateIds(
       [
@@ -47,30 +48,26 @@ export const templates: FlowTemplate[] = [
           type: "custom",
           position: { x: 100, y: 200 },
           data: {
-            type: "PineconeVectorStore",
-            label: "Knowledge Base",
+            type: "OpenAI",
+            label: "First Line",
             parameters: {
-              indexName: "docs",
-              documents: `The capital of France is Paris.
-The Eiffel Tower is 324 meters tall.
-The Louvre Museum houses the Mona Lisa.
-The Seine River flows through Paris.
-The Arc de Triomphe is a famous monument in Paris.`,
-              query: "What can you tell me about Paris?",
-              topK: 2
+              model: "gpt-4o-mini",
+              prompt:
+                "Write the first sentence/line of a philosophical haiku that explores the nature of existence, consciousness, or reality. Ensure it follows the traditional 5-syllable format.",
             },
           },
         },
         {
           id: "node-2",
           type: "custom",
-          position: { x: 500, y: 200 },
+          position: { x: 700, y: 200 },
           data: {
-            type: "OpenAI",
-            label: "RAG Assistant",
+            type: "Anthropic",
+            label: "Complete Haiku",
             parameters: {
-              model: "gpt-4o-mini",
-              prompt: "Answer the following question using the provided context. If the context doesn't contain relevant information, say so.\n\nQuestion: What can you tell me about Paris?",
+              model: "claude-3-5-sonnet-latest",
+              prompt:
+                "Complete this philosophical haiku by adding two more lines. The second line should be 7 syllables, and the final line should be 5 syllables. Maintain the philosophical theme and depth of the first line while creating a cohesive whole.",
             },
           },
         },
@@ -88,9 +85,10 @@ The Arc de Triomphe is a famous monument in Paris.`,
     ),
   },
   {
-    id: "philosophical-haiku",
-    name: "Philosophical Haiku",
-    description: "Generate a philosophical haiku using OpenAI and Anthropic models",
+    id: "movie-rag",
+    name: "Movie Database RAG",
+    description:
+      "Query movie information using Pinecone vector store and GPT-4",
     category: "Basic",
     ...createTemplateIds(
       [
@@ -99,24 +97,27 @@ The Arc de Triomphe is a famous monument in Paris.`,
           type: "custom",
           position: { x: 100, y: 200 },
           data: {
-            type: "OpenAI",
-            label: "First Line",
+            type: "PineconeVectorStore",
+            label: "Movie Database",
             parameters: {
-              model: "gpt-4o-mini",
-              prompt: "Write the first sentence/line of a philosophical haiku that explores the nature of existence, consciousness, or reality. Ensure it follows the traditional 5-syllable format.",
+              indexName: "sample-movies",
+              dimensions: "1024",
+              namespace: "",
+              topK: 3,
             },
           },
         },
         {
           id: "node-2",
           type: "custom",
-          position: { x: 700, y: 200 },
+          position: { x: 500, y: 200 },
           data: {
-            type: "Anthropic",
-            label: "Complete Haiku",
+            type: "OpenAI",
+            label: "Movie Assistant",
             parameters: {
-              model: "claude-3-5-sonnet-latest",
-              prompt: "Complete this philosophical haiku by adding two more lines. The second line should be 7 syllables, and the final line should be 5 syllables. Maintain the philosophical theme and depth of the first line while creating a cohesive whole.",
+              model: "gpt-4",
+              temperature: 0.7,
+              prompt: "Give me the box office sales of the Titanic",
             },
           },
         },
@@ -127,7 +128,7 @@ The Arc de Triomphe is a famous monument in Paris.`,
           source: "node-1",
           target: "node-2",
           sourceHandle: null,
-          targetHandle: InputType.CONTEXT,
+          targetHandle: InputType.VECTORSTORE,
           type: "default",
         },
       ]
