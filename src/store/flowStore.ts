@@ -15,25 +15,11 @@ import { v4 as uuidv4 } from "uuid";
 import { getBaseUrl } from "@/lib/utils";
 import { ExecutionStep } from "@/components/ExecutionLog";
 import { FlowTemplate } from "@/templates";
-import { nodeRegistry } from "@/nodes/registry";
+import { getNodeByType } from "@/nodes";
 import { BaseNode } from "@/types/nodes";
 
 function findNodeSchema(type: string): BaseNode | null {
-  function searchFolders(folders: any): BaseNode | null {
-    for (const folder of Object.values(folders) as any[]) {
-      if (folder.nodes) {
-        const node = folder.nodes.find((n: BaseNode) => n.type === type);
-        if (node) return node;
-      }
-      if (folder.folders) {
-        const found = searchFolders(folder.folders);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  return searchFolders(nodeRegistry.folders);
+  return getNodeByType(type) || null;
 }
 
 interface FlowState {
@@ -83,7 +69,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
   addNode: (type: string, position: XYPosition) => {
     const nodeSchema = findNodeSchema(type);
-    console.log('adding node')
+    console.log("adding node");
 
     if (!nodeSchema) {
       console.error(`No schema found for node type: ${type}`);
@@ -111,7 +97,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       },
     };
 
-    console.log({newNode})
+    console.log({ newNode });
     set({
       nodes: [...get().nodes, newNode],
     });

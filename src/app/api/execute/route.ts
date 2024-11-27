@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { Node, Edge } from "reactflow";
 import { ExecutionStep } from "@/components/ExecutionLog";
-import { OpenAINode } from "@/nodes/llm/openai/schema";
-import { AnthropicNode } from "@/nodes/llm/anthropic/schema";
+import { getNodeByType } from "@/nodes";
 import { InputType } from "@/types/nodes";
 
 // Build execution graph
@@ -66,7 +65,7 @@ function getNodeInputs(
   results: Map<string, string>
 ): Record<InputType, string> {
   const inputs: Partial<Record<InputType, string>> = {};
-  
+
   edges
     .filter((edge) => edge.target === nodeId)
     .forEach((edge) => {
@@ -104,19 +103,13 @@ async function executeNode(
       )
     );
 
-    let result: string;
-    let schemaNode;
-    // Execute based on node type
-    if (node.data.type === "OpenAI") {
-      schemaNode = OpenAINode;
-    } else if (node.data.type === "Anthropic") {
-      schemaNode = AnthropicNode;
-    } else {
+    const schemaNode = getNodeByType(node.data.type);
+    if (!schemaNode) {
       throw new Error(`Unknown node type: ${node.data.type}`);
     }
 
     const instance = await schemaNode.initialize(node.data, {});
-    result = await schemaNode.execute(instance, node.data, inputs);
+    const result = await schemaNode.execute(instance, node.data, inputs);
 
     // Update step status to completed
     controller.enqueue(
@@ -171,7 +164,10 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const { executionLevels, nodeMap } = buildExecutionGraph(nodes, edges);
+          const { executionLevels, nodeMap } = buildExecutionGraph(
+            nodes,
+            edges
+          );
           const results = new Map<string, string>();
 
           // Execute nodes level by level
