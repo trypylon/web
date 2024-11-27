@@ -104,3 +104,23 @@ export interface NodeInitOptions {
   cache?: BaseCache;
   credentials?: Record<string, any>;
 }
+
+export interface DebugLog {
+  type: "input" | "output" | "intermediate";
+  label: string;
+  value: any;
+  timestamp: number;
+}
+
+export interface ExecutionStep {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  status: "pending" | "running" | "completed" | "error";
+  startTime?: number;
+  endTime?: number;
+  result?: string;
+  error?: string;
+  order?: number;
+  debugLogs?: DebugLog[];
+}

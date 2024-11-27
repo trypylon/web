@@ -12,9 +12,12 @@ import {
   Loader2,
   MinimizeIcon,
   MaximizeIcon,
+  Code2,
+  Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResizablePanel } from "@/components/ui/resizable";
+import { DebugLog } from "@/types/nodes";
 
 export interface ExecutionStep {
   id: string;
@@ -26,6 +29,7 @@ export interface ExecutionStep {
   result?: string;
   error?: string;
   order?: number;
+  debugLogs?: DebugLog[];
 }
 
 interface ExecutionLogProps {
@@ -87,6 +91,7 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
   const [openItems, setOpenItems] = useState<string[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
   const [totalTime, setTotalTime] = useState<number>(0);
+  const [debugMode, setDebugMode] = useState(false);
 
   // Sort steps to ensure top-level nodes appear first
   const sortedSteps = [...steps].sort((a, b) => {
@@ -136,41 +141,50 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
     }
   }, [sortedSteps, totalTime]);
 
-  // Auto-expand items with errors or that are running
+  // Modified auto-expand logic to only force-open running steps
   useEffect(() => {
     sortedSteps.forEach((step) => {
-      if (
-        (step.status === "error" || step.status === "running") &&
-        !openItems.includes(step.id)
-      ) {
+      if (step.status === "running" && !openItems.includes(step.id)) {
         setOpenItems((prev) => [...prev, step.id]);
       }
     });
-  }, [sortedSteps, openItems]);
+  }, [sortedSteps]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Execution Log
-          </h3>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Execution Log
+            </h3>
+            <button
+              onClick={() => setIsMinimized(!isMinimized)}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              {isMinimized ? (
+                <MaximizeIcon className="w-4 h-4" />
+              ) : (
+                <MinimizeIcon className="w-4 h-4" />
+              )}
+            </button>
+          </div>
           {totalTime > 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Total execution time: {formatDuration(totalTime)}
             </p>
           )}
+          <label className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => setDebugMode(e.target.checked)}
+              className="rounded border-gray-300 dark:border-gray-700"
+            />
+            <Bug className="w-3 h-3" />
+            <span>Debug Mode</span>
+          </label>
         </div>
-        <button
-          onClick={() => setIsMinimized(!isMinimized)}
-          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          {isMinimized ? (
-            <MaximizeIcon className="w-4 h-4" />
-          ) : (
-            <MinimizeIcon className="w-4 h-4" />
-          )}
-        </button>
       </div>
 
       {!isMinimized && (
@@ -207,30 +221,61 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
                 <AccordionTrigger className="px-4 py-2 hover:no-underline">
                   <div className="flex items-center space-x-3 w-full">
                     <StatusIcon status={step.status} />
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium">{step.nodeName}</p>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="flex items-center justify-between space-x-2">
+                        <p className="font-medium truncate">{step.nodeName}</p>
                         <TimingDisplay
                           startTime={step.startTime}
                           endTime={step.endTime}
                         />
                       </div>
-                      {step.error && (
-                        <p className="text-xs text-red-600 dark:text-red-400">
-                          {step.error}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 py-3 bg-white/50 dark:bg-gray-900/50">
+                  {debugMode && step.debugLogs && (
+                    <div className="mb-4 space-y-2">
+                      {step.debugLogs.map((log, index) => (
+                        <div
+                          key={index}
+                          className={cn(
+                            "p-3 rounded-md text-sm font-mono max-w-full",
+                            {
+                              "bg-blue-50 dark:bg-blue-900/20":
+                                log.type === "input",
+                              "bg-green-50 dark:bg-green-900/20":
+                                log.type === "output",
+                              "bg-gray-50 dark:bg-gray-900/20":
+                                log.type === "intermediate",
+                            }
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-xs text-gray-500 dark:text-gray-400">
+                              {log.label}
+                            </span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <pre className="whitespace-pre-wrap break-words overflow-x-auto max-w-full">
+                            {typeof log.value === "string"
+                              ? log.value
+                              : JSON.stringify(log.value, null, 2)}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {step.status === "error" && (
-                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded">
-                      {step.error}
+                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded overflow-x-auto">
+                      <pre className="whitespace-pre-wrap break-words">
+                        {step.error}
+                      </pre>
                     </div>
                   )}
                   {step.status === "completed" && step.result && (
-                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words overflow-x-auto">
                       {step.result}
                     </div>
                   )}

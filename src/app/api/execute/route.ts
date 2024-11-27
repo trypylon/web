@@ -120,7 +120,10 @@ async function executeNode(
     const result = await schemaNode.execute(instance, node.data, inputs);
     const endTime = Date.now();
 
-    // Update step status to completed with timing information
+    // Get debug logs if they were attached to nodeData
+    const debugLogs = node.data._debugLogs;
+
+    // Update step status to completed with timing information and debug logs
     controller.enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
@@ -131,8 +134,9 @@ async function executeNode(
             nodeName: node.data.label,
             status: "completed",
             result,
-            startTime, // Preserve the start time
-            endTime, // Include the end time
+            startTime,
+            endTime,
+            debugLogs,
           },
         })}\n\n`
       )
@@ -141,8 +145,9 @@ async function executeNode(
     return result;
   } catch (error: any) {
     const endTime = Date.now();
+    const debugLogs = node.data._debugLogs;
 
-    // Update step status to error with timing information
+    // Update step status to error with timing information and debug logs
     controller.enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
@@ -153,8 +158,9 @@ async function executeNode(
             nodeName: node.data.label,
             status: "error",
             error: error.message,
-            startTime, // Preserve the start time
-            endTime, // Include the end time
+            startTime,
+            endTime,
+            debugLogs,
           },
         })}\n\n`
       )
@@ -198,6 +204,14 @@ export async function POST(request: Request) {
                 const node = nodeMap.get(nodeId);
                 if (!node) return;
 
+                // Skip nodes without execute function
+                const schemaNode = getNodeByType(node.data.type);
+                if (!schemaNode?.execute) {
+                  const instance = await schemaNode?.initialize(node.data, {});
+                  results.set(nodeId, JSON.stringify(instance));
+                  return;
+                }
+
                 const stepId =
                   executionSteps.find(
                     (step: ExecutionStep) => step.nodeId === nodeId
@@ -216,7 +230,6 @@ export async function POST(request: Request) {
                   );
                   results.set(nodeId, result);
                 } catch (error) {
-                  // Continue with other nodes in the same level
                   console.error(`Error executing node ${nodeId}:`, error);
                 }
               })

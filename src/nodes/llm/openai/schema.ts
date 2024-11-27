@@ -6,6 +6,7 @@ import {
   NodeData,
   NodeInitOptions,
   InputType,
+  DebugLog,
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -13,6 +14,11 @@ import { PineconeStore } from "@langchain/pinecone";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { OpenAIEmbeddings } from "@langchain/openai";
+import { createDebugLog } from "@/lib/debug";
+
+interface ExtendedNodeData extends NodeData {
+  _debugLogs?: DebugLog[];
+}
 
 export const OpenAINode: BaseNode = {
   id: "openai",
@@ -111,8 +117,11 @@ export const OpenAINode: BaseNode = {
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) {
+    const updatedNodeData = { ...nodeData } as ExtendedNodeData;
+    const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
-    console.log("Initial prompt:", promptText);
+
+    debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
 
     // Build template and variables based on available inputs
     let template = "{input}";
@@ -120,14 +129,16 @@ export const OpenAINode: BaseNode = {
       input: promptText,
     };
 
-    // If vector store config is provided, initialize and use it
-    console.log({ inputs });
     if (inputs?.vectorstore) {
-      console.log("Vector store input received:", inputs.vectorstore);
-
       try {
         const vectorStoreConfig = JSON.parse(inputs.vectorstore);
-        console.log("Parsed vector store config:", vectorStoreConfig);
+        debugLogs.push(
+          createDebugLog(
+            "intermediate",
+            "Vector Store Config",
+            vectorStoreConfig
+          )
+        );
 
         // Choose embedding model based on dimensions
         let embeddings;
@@ -165,7 +176,7 @@ export const OpenAINode: BaseNode = {
           namespace: vectorStoreConfig.namespace,
         });
 
-        // First, use the LLM to create a better search query
+        // Generate search query
         const queryGenPrompt = PromptTemplate.fromTemplate(
           `Given the following user request, generate a concise search query that would help find relevant information in a database of movies.
           Focus on key terms and concepts that would match movie descriptions.
@@ -174,22 +185,34 @@ export const OpenAINode: BaseNode = {
 
           Search Query:`
         );
-
-        console.log("Generating search query...");
         const searchQuery = await instance.llm.invoke(
           await queryGenPrompt.format({ input: promptText })
         );
 
-        console.log("Generated search query:", searchQuery.content);
+        debugLogs.push(
+          createDebugLog(
+            "intermediate",
+            "Generated Search Query",
+            searchQuery.content
+          )
+        );
 
-        // Use the generated query to search the vector store
-        console.log("Searching vector store...");
+        // Search vector store
         const docs = await vectorStore.similaritySearch(
           searchQuery.content as string,
           vectorStoreConfig.topK || 3
         );
 
-        console.log("Retrieved documents:", docs);
+        debugLogs.push(
+          createDebugLog(
+            "intermediate",
+            "Retrieved Documents",
+            docs.map((doc) => ({
+              content: doc.pageContent,
+              metadata: doc.metadata,
+            }))
+          )
+        );
 
         if (!docs || docs.length === 0) {
           console.log("No documents found in vector store");
@@ -222,14 +245,10 @@ Summary: ${metadata.summary}`;
 
           console.log("Formatted docs:", inputValues.docs);
         }
-      } catch (error: unknown) {
-        console.error("Error in vector store processing:", error);
-        // Add more specific error handling
-        if (error instanceof Error && error.message.includes("dimension")) {
-          throw new Error(
-            `Vector dimension mismatch. Please check your index dimensions match your selected embedding model.`
-          );
-        }
+      } catch (error) {
+        debugLogs.push(
+          createDebugLog("intermediate", "Vector Store Error", error.message)
+        );
         throw error;
       }
     }
@@ -252,10 +271,20 @@ Summary: ${metadata.summary}`;
 
     const promptTemplate = PromptTemplate.fromTemplate(template);
     const formattedPrompt = await promptTemplate.format(inputValues);
-    console.log("Final formatted prompt:", formattedPrompt);
+
+    debugLogs.push(
+      createDebugLog("intermediate", "Final Formatted Prompt", formattedPrompt)
+    );
 
     // Get response from LLM
     const response = await instance.llm.invoke(formattedPrompt);
+
+    debugLogs.push(createDebugLog("output", "LLM Response", response.content));
+
+    // Update the nodeData with debug logs
+    updatedNodeData._debugLogs = debugLogs;
+    Object.assign(nodeData || {}, { _debugLogs: debugLogs });
+
     return response.content as string;
   },
 };

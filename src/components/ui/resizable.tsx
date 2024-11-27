@@ -28,6 +28,15 @@ export const ResizablePanel = React.forwardRef<
     const [isDragging, setIsDragging] = React.useState(false);
     const panelRef = React.useRef<HTMLDivElement>(null);
 
+    React.useEffect(() => {
+      if (!panelRef.current) return;
+      const content = panelRef.current;
+      const scrollHeight = content.scrollHeight;
+      if (scrollHeight > height && scrollHeight < maxHeight) {
+        setHeight(Math.min(scrollHeight + 40, maxHeight));
+      }
+    }, [children, maxHeight, height]);
+
     const handleMouseDown = (e: React.MouseEvent) => {
       e.preventDefault();
       setIsDragging(true);
@@ -65,20 +74,24 @@ export const ResizablePanel = React.forwardRef<
     }, [handleMouseMove, handleMouseUp]);
 
     return (
-      <div
-        ref={panelRef}
-        className={cn("relative", className)}
-        style={{ height: `${height}px` }}
-        {...props}
-      >
-        {children}
+      <div className="relative" style={{ height: `${height}px` }}>
+        <div
+          ref={panelRef}
+          className={cn("h-full overflow-auto", className)}
+          {...props}
+        >
+          {children}
+        </div>
         <div
           className={cn(
-            "absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize",
-            isDragging && "bg-blue-500/10"
+            "sticky bottom-0 left-0 right-0 h-4 cursor-ns-resize hover:bg-blue-500/10",
+            isDragging && "bg-blue-500/10",
+            "before:absolute before:bottom-0 before:left-0 before:right-0 before:h-8 before:bg-gradient-to-t before:from-white before:to-transparent before:dark:from-gray-800 before:pointer-events-none"
           )}
           onMouseDown={handleMouseDown}
-        />
+        >
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+        </div>
       </div>
     );
   }
