@@ -65,6 +65,14 @@ export const OpenAINode: BaseNode = {
       required: false,
       description: "Additional context to be injected into the prompt",
     },
+    memory: {
+      required: false,
+      description: "Chat history or memory from previous interactions",
+    },
+    vectorstore: {
+      required: false,
+      description: "Retrieved documents from a vector store for RAG",
+    }
   },
   outputs: [
     {
@@ -90,21 +98,32 @@ export const OpenAINode: BaseNode = {
     // Get the prompt from inputs or parameters
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
     const context = inputs?.context || "";
+    const memory = inputs?.memory || "";
+    const vectorstore = inputs?.vectorstore || "";
 
-    // Create a prompt template that includes context if available
-    const template = context 
-      ? `Context: {context}\n\nPrompt: {prompt}`
-      : "{prompt}";
+    // Build the complete prompt template based on available inputs
+    let template = "{prompt}";
+    const templateVars: Record<string, string> = { prompt: promptText };
+
+    if (context) {
+      template = "Context:\n{context}\n\nPrompt: {prompt}";
+      templateVars.context = context;
+    }
+
+    if (memory) {
+      template = "Previous Conversation:\n{memory}\n\n" + template;
+      templateVars.memory = memory;
+    }
+
+    if (vectorstore) {
+      template = "Retrieved Documents:\n{vectorstore}\n\n" + template;
+      templateVars.vectorstore = vectorstore;
+    }
 
     const promptTemplate = PromptTemplate.fromTemplate(template);
-    
-    // Format the prompt with the variables
-    const formattedPrompt = await promptTemplate.format({
-      prompt: promptText,
-      context: context,
-    });
-
+    const formattedPrompt = await promptTemplate.format(templateVars);
     const response = await instance.invoke(formattedPrompt);
+    
     return response.content as string;
   },
 };
