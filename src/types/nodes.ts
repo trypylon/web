@@ -12,7 +12,9 @@ export enum NodeCategory {
 
 export enum InputType {
   PROMPT = 'prompt',
-  CONTEXT = 'context'
+  CONTEXT = 'context',
+  MEMORY = 'memory',
+  VECTORSTORE = 'vectorstore'
 }
 
 export interface NodePort {
@@ -62,11 +64,7 @@ export interface BaseNode {
   credentials?: NodeCredential[];
   
   inputs: {
-    prompt?: {
-      required: boolean;
-      description: string;
-    };
-    context?: {
+    [key in InputType]?: {
       required: boolean;
       description: string;
     };
