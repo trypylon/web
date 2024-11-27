@@ -36,6 +36,58 @@ function createTemplateIds(
 
 export const templates: FlowTemplate[] = [
   {
+    id: "rag-example",
+    name: "RAG Example",
+    description: "Simple RAG implementation using Pinecone and GPT-4",
+    category: "Basic",
+    ...createTemplateIds(
+      [
+        {
+          id: "node-1",
+          type: "custom",
+          position: { x: 100, y: 200 },
+          data: {
+            type: "PineconeVectorStore",
+            label: "Knowledge Base",
+            parameters: {
+              indexName: "docs",
+              documents: `The capital of France is Paris.
+The Eiffel Tower is 324 meters tall.
+The Louvre Museum houses the Mona Lisa.
+The Seine River flows through Paris.
+The Arc de Triomphe is a famous monument in Paris.`,
+              query: "What can you tell me about Paris?",
+              topK: 2
+            },
+          },
+        },
+        {
+          id: "node-2",
+          type: "custom",
+          position: { x: 500, y: 200 },
+          data: {
+            type: "OpenAI",
+            label: "RAG Assistant",
+            parameters: {
+              model: "gpt-4o-mini",
+              prompt: "Answer the following question using the provided context. If the context doesn't contain relevant information, say so.\n\nQuestion: What can you tell me about Paris?",
+            },
+          },
+        },
+      ],
+      [
+        {
+          id: "edge-1",
+          source: "node-1",
+          target: "node-2",
+          sourceHandle: null,
+          targetHandle: InputType.CONTEXT,
+          type: "default",
+        },
+      ]
+    ),
+  },
+  {
     id: "philosophical-haiku",
     name: "Philosophical Haiku",
     description: "Generate a philosophical haiku using OpenAI and Anthropic models",
@@ -76,120 +128,6 @@ export const templates: FlowTemplate[] = [
           target: "node-2",
           sourceHandle: null,
           targetHandle: InputType.CONTEXT,
-          type: "default",
-        },
-      ]
-    ),
-  },
-  {
-    id: "basic-conversation",
-    name: "Basic Conversation",
-    description:
-      "Simple example showing how to use different language models in sequence",
-    category: "Basic",
-    ...createTemplateIds(
-      [
-        {
-          id: "node-1",
-          type: "custom",
-          position: { x: 100, y: 200 },
-          data: {
-            type: "OpenAI",
-            label: "Initial Question",
-            parameters: {
-              model: "gpt-4o-mini",
-              prompt:
-                "Ask a thought-provoking question about technology and its impact on society.",
-            },
-          },
-        },
-        {
-          id: "node-2",
-          type: "custom",
-          position: { x: 400, y: 200 },
-          data: {
-            type: "Anthropic",
-            label: "Detailed Response",
-            parameters: {
-              model: "claude-3-5-sonnet",
-              prompt:
-                "Provide a detailed, nuanced response to the question, considering multiple perspectives and citing relevant research or examples.",
-            },
-          },
-        },
-      ],
-      [
-        {
-          id: "edge-1",
-          source: "node-1",
-          target: "node-2",
-          type: "default",
-        },
-      ]
-    ),
-  },
-  {
-    id: "story-generation",
-    name: "Story Generation",
-    description:
-      "Generate a philosophical story using a chain of language models",
-    category: "Advanced",
-    ...createTemplateIds(
-      [
-        {
-          id: "node-1",
-          type: "custom",
-          position: { x: 100, y: 200 },
-          data: {
-            type: "OpenAI",
-            label: "Story Beginning",
-            parameters: {
-              model: "gpt-4o-mini",
-              prompt:
-                "Write the first sentence of a deep philosophical story about the nature of consciousness and free will.",
-            },
-          },
-        },
-        {
-          id: "node-2",
-          type: "custom",
-          position: { x: 400, y: 200 },
-          data: {
-            type: "OpenAI",
-            label: "Story Middle",
-            parameters: {
-              model: "gpt-4o-mini",
-              prompt:
-                "Based on the previous sentence, write the next two sentences that explore the philosophical implications deeper.",
-            },
-          },
-        },
-        {
-          id: "node-3",
-          type: "custom",
-          position: { x: 700, y: 200 },
-          data: {
-            type: "OpenAI",
-            label: "Story Ending",
-            parameters: {
-              model: "gpt-4o-mini",
-              prompt:
-                "Write a powerful final sentence that brings the philosophical story to a thought-provoking conclusion.",
-            },
-          },
-        },
-      ],
-      [
-        {
-          id: "edge-1",
-          source: "node-1",
-          target: "node-2",
-          type: "default",
-        },
-        {
-          id: "edge-2",
-          source: "node-2",
-          target: "node-3",
           type: "default",
         },
       ]
