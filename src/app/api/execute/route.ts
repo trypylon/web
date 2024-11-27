@@ -97,6 +97,8 @@ async function executeNode(
     return JSON.stringify(instance);
   }
 
+  const startTime = Date.now();
+
   try {
     // Update step status to running
     controller.enqueue(
@@ -108,7 +110,7 @@ async function executeNode(
             nodeId: node.id,
             nodeName: node.data.label,
             status: "running",
-            startTime: Date.now(),
+            startTime,
           },
         })}\n\n`
       )
@@ -116,8 +118,9 @@ async function executeNode(
 
     const instance = await schemaNode.initialize(node.data, {});
     const result = await schemaNode.execute(instance, node.data, inputs);
+    const endTime = Date.now();
 
-    // Update step status to completed
+    // Update step status to completed with timing information
     controller.enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
@@ -128,7 +131,8 @@ async function executeNode(
             nodeName: node.data.label,
             status: "completed",
             result,
-            endTime: Date.now(),
+            startTime, // Preserve the start time
+            endTime, // Include the end time
           },
         })}\n\n`
       )
@@ -136,7 +140,9 @@ async function executeNode(
 
     return result;
   } catch (error: any) {
-    // Update step status to error
+    const endTime = Date.now();
+
+    // Update step status to error with timing information
     controller.enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
@@ -147,7 +153,8 @@ async function executeNode(
             nodeName: node.data.label,
             status: "error",
             error: error.message,
-            endTime: Date.now(),
+            startTime, // Preserve the start time
+            endTime, // Include the end time
           },
         })}\n\n`
       )
