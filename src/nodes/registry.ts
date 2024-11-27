@@ -1,5 +1,6 @@
 import { OpenAINode } from './llm/openai/schema';
 import { AnthropicNode } from './llm/anthropic/schema';
+import { PineconeVectorStoreNode } from './vectorstore/pinecone/schema';
 
 export const nodeRegistry = {
   name: 'Nodes',
@@ -23,7 +24,12 @@ export const nodeRegistry = {
     },
     vectorstores: {
       name: 'Vector Stores',
-      folders: {}
+      folders: {
+        pinecone: {
+          name: 'Pinecone',
+          nodes: [PineconeVectorStoreNode]
+        }
+      }
     },
     tools: {
       name: 'Tools',
