@@ -1,15 +1,7 @@
 import { z } from "zod";
 import { Database } from "lucide-react";
-import {
-  BaseNode,
-  NodeCategory,
-  NodeData,
-  NodeInitOptions,
-} from "@/types/nodes";
-import { PineconeStore } from "@langchain/pinecone";
-import { Pinecone, Index, IndexList } from "@pinecone-database/pinecone";
-import { OpenAIEmbeddings } from "@langchain/openai";
-import { HuggingFaceTransformersEmbeddings } from "@langchain/huggingface-transformers";
+import { BaseNode, NodeCategory, NodeData } from "@/types/nodes";
+import { Pinecone } from "@pinecone-database/pinecone";
 
 export const PineconeVectorStoreNode: BaseNode = {
   id: "pinecone-vectorstore",
@@ -30,7 +22,7 @@ export const PineconeVectorStoreNode: BaseNode = {
           apiKey: process.env.PINECONE_API_KEY!,
         });
         const indexes = await pinecone.listIndexes();
-        return Array.from(indexes).map((index: Index) => ({
+        return indexes?.map((index) => ({
           label: index.name,
           value: index.name,
         }));
@@ -42,10 +34,10 @@ export const PineconeVectorStoreNode: BaseNode = {
       label: "Vector Dimensions",
       type: "select",
       options: [
-        { label: "OpenAI Ada (1536)", value: 1536 },
-        { label: "Standard (1024)", value: 1024 },
-        { label: "OpenAI Small (384)", value: 384 },
-        { label: "Custom 768", value: 768 },
+        { label: "OpenAI Standard (1536)", value: 1536 },
+        { label: "Microsoft e5-large (1024)", value: 1024 },
+        // { label: "OpenAI Small (384)", value: 384 },
+        // { label: "Custom 768", value: 768 },
       ],
       default: 1536,
       description: "Vector dimensions of your Pinecone index",
@@ -73,11 +65,6 @@ export const PineconeVectorStoreNode: BaseNode = {
       required: true,
       description: "Your Pinecone API key",
     },
-    {
-      name: "pineconeEnvironment",
-      required: true,
-      description: "Your Pinecone environment",
-    },
   ],
   inputs: {},
   outputs: [
@@ -87,55 +74,18 @@ export const PineconeVectorStoreNode: BaseNode = {
         indexName: z.string(),
         namespace: z.string().optional(),
         topK: z.number(),
+        dimensions: z.number(),
       }),
     },
   ],
 
   async initialize(nodeData: NodeData) {
-    const pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!,
-    });
-
-    const index = pinecone.Index(nodeData.parameters.indexName);
-
-    // Get dimensions from either select or custom input
-    const dimensions =
-      nodeData.parameters.dimensions === "custom"
-        ? nodeData.parameters.customDimensions
-        : parseInt(nodeData.parameters.dimensions);
-
-    const embeddings = {
-      embedQuery: async (text: string) => {
-        const response = await fetch("https://api.openai.com/v1/embeddings", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            input: text,
-            model: "text-embedding-ada-002",
-            dimensions: dimensions,
-          }),
-        });
-
-        const result = await response.json();
-        return result.data[0].embedding;
-      },
-    };
-
+    // Just return the configuration
     return {
       indexName: nodeData.parameters.indexName,
       namespace: nodeData.parameters.namespace,
       topK: nodeData.parameters.topK || 3,
-      index,
-      embeddings,
-      dimensions,
+      dimensions: nodeData.parameters.dimensions,
     };
-  },
-
-  async execute() {
-    // Config-only node, no execution needed
-    return "";
   },
 };

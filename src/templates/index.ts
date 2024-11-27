@@ -102,8 +102,8 @@ export const templates: FlowTemplate[] = [
             parameters: {
               indexName: "sample-movies",
               dimensions: "1024",
-              namespace: "",
               topK: 3,
+              namespace: "",
             },
           },
         },

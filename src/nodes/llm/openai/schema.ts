@@ -9,15 +9,10 @@ import {
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
-import {
-  RunnableSequence,
-  RunnablePassthrough,
-} from "@langchain/core/runnables";
-import { StringOutputParser } from "@langchain/core/output_parsers";
-import { BaseMessage } from "@langchain/core/messages";
 import { PineconeStore } from "@langchain/pinecone";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
+import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+import { OpenAIEmbeddings } from "@langchain/openai";
 
 export const OpenAINode: BaseNode = {
   id: "openai",
@@ -57,55 +52,18 @@ export const OpenAINode: BaseNode = {
       description: "The system prompt that guides the model behavior",
       validation: z.string().min(1),
     },
-    {
-      name: "useVectorStore",
-      label: "Use Vector Store",
-      type: "boolean",
-      default: false,
-      description: "Enable RAG with vector store",
-    },
-    {
-      name: "vectorStoreIndex",
-      label: "Vector Store Index",
-      type: "asyncSelect",
-      description: "Select your Pinecone index",
-      loadOptions: async () => {
-        const pinecone = new Pinecone({
-          apiKey: process.env.PINECONE_API_KEY!,
-        });
-        const indexes = await pinecone.listIndexes();
-        return indexes?.map((index) => ({
-          label: index.name,
-          value: index.name,
-        }));
-      },
-      validation: z.string().optional(),
-      conditions: [{ field: "useVectorStore", value: true }],
-    },
-    {
-      name: "vectorStoreNamespace",
-      label: "Vector Store Namespace",
-      type: "string",
-      description: "Optional namespace to query",
-      optional: true,
-      validation: z.string().optional(),
-      conditions: [{ field: "useVectorStore", value: true }],
-    },
-    {
-      name: "topK",
-      label: "Results Count",
-      type: "number",
-      default: 3,
-      description: "Number of similar documents to return",
-      validation: z.number().min(1).max(10),
-      conditions: [{ field: "useVectorStore", value: true }],
-    },
   ],
   credentials: [
     {
       name: "openaiApiKey",
       required: true,
       description: "Your OpenAI API key",
+    },
+    {
+      name: "huggingfaceApiKey",
+      required: false,
+      description:
+        "Your HuggingFace API key (required for e5-large embeddings)",
     },
   ],
   inputs: {
@@ -163,6 +121,7 @@ export const OpenAINode: BaseNode = {
     };
 
     // If vector store config is provided, initialize and use it
+    console.log({ inputs });
     if (inputs?.vectorstore) {
       console.log("Vector store input received:", inputs.vectorstore);
 
@@ -170,15 +129,41 @@ export const OpenAINode: BaseNode = {
         const vectorStoreConfig = JSON.parse(inputs.vectorstore);
         console.log("Parsed vector store config:", vectorStoreConfig);
 
-        // Use the vector store's embeddings with specified dimensions
-        const vectorStore = await PineconeStore.fromExistingIndex(
-          vectorStoreConfig.embeddings,
-          {
-            pineconeIndex: vectorStoreConfig.index,
-            namespace: vectorStoreConfig.namespace,
-            dimensions: vectorStoreConfig.dimensions,
-          }
+        // Choose embedding model based on dimensions
+        let embeddings;
+        console.log(
+          "Vector dimensions:",
+          vectorStoreConfig.dimensions,
+          typeof vectorStoreConfig.dimensions
         );
+
+        // Fix the comparison - ensure we're comparing numbers
+        const dimensions = Number(vectorStoreConfig.dimensions);
+        if (dimensions === 1024) {
+          console.log("Using Microsoft e5-large embeddings");
+          embeddings = new HuggingFaceInferenceEmbeddings({
+            apiKey: process.env.HUGGINGFACE_API_KEY,
+            model: "intfloat/multilingual-e5-large",
+          });
+        } else {
+          console.log("Using OpenAI embeddings");
+          embeddings = new OpenAIEmbeddings({
+            openAIApiKey: process.env.OPENAI_API_KEY,
+          });
+        }
+
+        // Initialize Pinecone
+        const pinecone = new Pinecone({
+          apiKey: process.env.PINECONE_API_KEY!,
+        });
+
+        const index = pinecone.Index(vectorStoreConfig.indexName);
+
+        // Create vector store with the embeddings
+        const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+          pineconeIndex: index,
+          namespace: vectorStoreConfig.namespace,
+        });
 
         // First, use the LLM to create a better search query
         const queryGenPrompt = PromptTemplate.fromTemplate(
@@ -208,7 +193,6 @@ export const OpenAINode: BaseNode = {
 
         if (!docs || docs.length === 0) {
           console.log("No documents found in vector store");
-          // Handle the case where no documents are found
           template = `You are a helpful assistant. The user asked: {input}
 
 Unfortunately, I couldn't find any relevant information in the database. Please provide a general response or suggest alternatives.`;
@@ -225,15 +209,25 @@ User Request: {input}
 
 Please provide a friendly, helpful response that directly addresses the user's request.`;
 
-          inputValues.docs = docs.map((doc) => doc.pageContent).join("\n\n");
+          // Format the documents to include metadata
+          inputValues.docs = docs
+            .map((doc) => {
+              const metadata = doc.metadata;
+              return `Title: ${metadata.title} (${metadata.year})
+Box Office: $${metadata["box-office"].toLocaleString()}
+Genre: ${metadata.genre}
+Summary: ${metadata.summary}`;
+            })
+            .join("\n\n");
+
           console.log("Formatted docs:", inputValues.docs);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error in vector store processing:", error);
         // Add more specific error handling
-        if (error.message.includes("dimension")) {
+        if (error instanceof Error && error.message.includes("dimension")) {
           throw new Error(
-            `Vector dimension mismatch. Your index requires ${vectorStoreConfig.dimensions} dimensions.`
+            `Vector dimension mismatch. Please check your index dimensions match your selected embedding model.`
           );
         }
         throw error;

@@ -1,20 +1,20 @@
-import { BaseCache } from '@langchain/core/caches';
-import { z } from 'zod';
-import { LucideIcon } from 'lucide-react';
+import { BaseCache } from "@langchain/core/caches";
+import { z } from "zod";
+import { LucideIcon } from "lucide-react";
 
 export enum NodeCategory {
-  LLM = 'Language Models',
-  MEMORY = 'Memory',
-  VECTORSTORE = 'Vector Stores',
-  TOOLS = 'Tools',
-  OUTPUT = 'Output'
+  LLM = "Language Models",
+  MEMORY = "Memory",
+  VECTORSTORE = "Vector Stores",
+  TOOLS = "Tools",
+  OUTPUT = "Output",
 }
 
 export enum InputType {
-  PROMPT = 'prompt',
-  CONTEXT = 'context',
-  MEMORY = 'memory',
-  VECTORSTORE = 'vectorstore'
+  PROMPT = "prompt",
+  CONTEXT = "context",
+  MEMORY = "memory",
+  VECTORSTORE = "vectorstore",
 }
 
 export interface NodePort {
@@ -27,14 +27,21 @@ export interface NodePort {
 export interface NodeParameter {
   label: string;
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'json' | 'credential' | 'asyncSelect';
+  type:
+    | "string"
+    | "number"
+    | "boolean"
+    | "select"
+    | "json"
+    | "credential"
+    | "asyncSelect";
   description?: string;
   default?: any;
   optional?: boolean;
   options?: { label: string; value: any }[];
   loadOptions?: () => Promise<{ label: string; value: any }[]>;
   validation?: z.ZodType<any>;
-  category?: 'basic' | 'advanced';
+  category?: "basic" | "advanced";
   conditions?: {
     field: string;
     value: any;
@@ -62,7 +69,7 @@ export interface BaseNode {
   version: string;
   parameters: NodeParameter[];
   credentials?: NodeCredential[];
-  
+
   inputs: {
     [key in InputType]?: {
       required: boolean;
@@ -73,11 +80,15 @@ export interface BaseNode {
     type: string;
     schema: z.ZodType<any>;
   }[];
-  
+
   preserveState?: boolean;
-  
+
   initialize: (nodeData: NodeData, options: NodeInitOptions) => Promise<any>;
-  execute: (nodeInstance: any, nodeData?: NodeData, inputs?: Record<InputType, string>) => Promise<any>;
+  execute?: (
+    nodeInstance: any,
+    nodeData?: NodeData,
+    inputs?: Record<InputType, string>
+  ) => Promise<any>;
   cleanup?: (nodeInstance: any) => Promise<void>;
 }
 
