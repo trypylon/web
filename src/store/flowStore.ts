@@ -83,6 +83,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
   addNode: (type: string, position: XYPosition) => {
     const nodeSchema = findNodeSchema(type);
+    console.log('adding node')
 
     if (!nodeSchema) {
       console.error(`No schema found for node type: ${type}`);
@@ -110,6 +111,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       },
     };
 
+    console.log({newNode})
     set({
       nodes: [...get().nodes, newNode],
     });
