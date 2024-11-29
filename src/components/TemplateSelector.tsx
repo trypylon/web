@@ -48,11 +48,11 @@ export function TemplateSelector() {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="space-x-2"
+          className="space-x-2 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white hover:from-purple-500 hover:via-pink-600 hover:to-red-600 transition-all duration-300 transform hover:scale-105"
           onClick={() => setIsOpen(true)}
         >
-          <FileCode className="w-4 h-4" />
-          <span>Load Template</span>
+          <FileCode className="w-4 h-4 animate-bounce" />
+          <span className="font-bold">Try an example template</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Database } from "lucide-react";
-import { BaseNode, NodeCategory, NodeData } from "@/types/nodes";
+import { BaseNode, NodeCategory, NodeData, NodeRole } from "@/types/nodes";
 import { Pinecone } from "@pinecone-database/pinecone";
 
 export const PineconeVectorStoreNode: BaseNode = {
@@ -11,22 +11,13 @@ export const PineconeVectorStoreNode: BaseNode = {
   description: "Configure Pinecone vector store for RAG",
   icon: Database,
   version: "1.0.0",
+  role: NodeRole.CONFIG,
   parameters: [
     {
       name: "indexName",
       label: "Index Name",
       type: "asyncSelect",
       description: "Select your Pinecone index",
-      loadOptions: async () => {
-        const pinecone = new Pinecone({
-          apiKey: process.env.PINECONE_API_KEY!,
-        });
-        const indexes = await pinecone.listIndexes();
-        return indexes?.map((index) => ({
-          label: index.name,
-          value: index.name,
-        }));
-      },
       validation: z.string().min(1),
     },
     {

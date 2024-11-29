@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { ExecutionLog } from "./ExecutionLog";
 import { TemplateSelector } from "./TemplateSelector";
+import { NodeRole, isExecutorNode } from "@/types/nodes";
+import { findNodeSchema } from "@/store/flowStore";
 
 const nodeTypes = {
   custom: CustomNode,
@@ -69,7 +71,13 @@ function FlowEditor() {
     // Find start nodes (nodes with no incoming edges)
     const startNodeIds = new Set(
       currentNodes
-        .filter((node) => !currentEdges.some((edge) => edge.target === node.id))
+        .filter((node) => {
+          const nodeSchema = findNodeSchema(node.data.type);
+          const hasNoIncomingEdges = !currentEdges.some(
+            (edge) => edge.target === node.id
+          );
+          return nodeSchema && isExecutorNode(nodeSchema) && hasNoIncomingEdges;
+        })
         .map((node) => node.id)
     );
 

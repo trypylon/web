@@ -7,6 +7,7 @@ import {
   NodeInitOptions,
   InputType,
   DebugLog,
+  NodeRole,
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -28,6 +29,7 @@ export const OpenAINode: BaseNode = {
   description: "OpenAI language models like GPT-4 and GPT-3.5",
   icon: Bot,
   version: "1.0.0",
+  role: NodeRole.EXECUTOR,
   parameters: [
     {
       name: "model",
@@ -246,9 +248,19 @@ Summary: ${metadata.summary}`;
           console.log("Formatted docs:", inputValues.docs);
         }
       } catch (error) {
-        debugLogs.push(
-          createDebugLog("intermediate", "Vector Store Error", error.message)
-        );
+        if (error instanceof Error) {
+          debugLogs.push(
+            createDebugLog("intermediate", "Vector Store Error", error.message)
+          );
+        } else {
+          debugLogs.push(
+            createDebugLog(
+              "intermediate",
+              "Vector Store Error",
+              "Unknown error"
+            )
+          );
+        }
         throw error;
       }
     }

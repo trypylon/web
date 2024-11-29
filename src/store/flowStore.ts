@@ -17,8 +17,9 @@ import { ExecutionStep } from "@/components/ExecutionLog";
 import { FlowTemplate } from "@/templates";
 import { getNodeByType } from "@/nodes";
 import { BaseNode } from "@/types/nodes";
+import { NodeRole } from "@/types/nodes";
 
-function findNodeSchema(type: string): BaseNode | null {
+export function findNodeSchema(type: string): BaseNode | null {
   return getNodeByType(type) || null;
 }
 
@@ -159,15 +160,25 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   executeFlow: async () => {
     const abortController = new AbortController();
 
+    const executableSteps = get()
+      .nodes.map((node) => {
+        const nodeSchema = findNodeSchema(node.data.type);
+        if (nodeSchema?.role === NodeRole.EXECUTOR) {
+          return {
+            id: uuidv4(),
+            nodeId: node.id,
+            nodeName: node.data.label,
+            status: "pending",
+          };
+        }
+        return null;
+      })
+      .filter((step): step is ExecutionStep => step !== null);
+
     set({
       isExecuting: true,
       error: null,
-      executionSteps: get().nodes.map((node) => ({
-        id: uuidv4(),
-        nodeId: node.id,
-        nodeName: node.data.label,
-        status: "pending",
-      })),
+      executionSteps: executableSteps,
       abortController,
     });
 
@@ -180,7 +191,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         body: JSON.stringify({
           nodes: get().nodes,
           edges: get().edges,
-          executionSteps: get().executionSteps,
+          executionSteps: executableSteps,
         }),
         signal: abortController.signal,
       });

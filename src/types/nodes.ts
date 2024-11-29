@@ -17,6 +17,11 @@ export enum InputType {
   VECTORSTORE = "vectorstore",
 }
 
+export enum NodeRole {
+  EXECUTOR = "executor",
+  CONFIG = "config",
+}
+
 export interface NodePort {
   id: string;
   type: InputType;
@@ -41,7 +46,6 @@ export interface NodeParameter {
   options?: { label: string; value: any }[];
   loadOptions?: () => Promise<{ label: string; value: any }[]>;
   validation?: z.ZodType<any>;
-  category?: "basic" | "advanced";
   conditions?: {
     field: string;
     value: any;
@@ -59,7 +63,7 @@ export interface NodeInput {
   value?: string;
 }
 
-export interface BaseNode {
+interface BaseNodeCommon {
   id: string;
   type: string;
   category: NodeCategory;
@@ -69,7 +73,6 @@ export interface BaseNode {
   version: string;
   parameters: NodeParameter[];
   credentials?: NodeCredential[];
-
   inputs: {
     [key in InputType]?: {
       required: boolean;
@@ -80,16 +83,29 @@ export interface BaseNode {
     type: string;
     schema: z.ZodType<any>;
   }[];
-
   preserveState?: boolean;
-
   initialize: (nodeData: NodeData, options: NodeInitOptions) => Promise<any>;
-  execute?: (
+  cleanup?: (nodeInstance: any) => Promise<void>;
+}
+
+interface ExecutorNode extends BaseNodeCommon {
+  role: NodeRole.EXECUTOR;
+  execute: (
     nodeInstance: any,
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) => Promise<any>;
-  cleanup?: (nodeInstance: any) => Promise<void>;
+}
+
+interface ConfigNode extends BaseNodeCommon {
+  role: NodeRole.CONFIG;
+  // Note: no execute method allowed here
+}
+
+export type BaseNode = ExecutorNode | ConfigNode;
+
+export function isExecutorNode(node: BaseNode): node is ExecutorNode {
+  return node.role === NodeRole.EXECUTOR;
 }
 
 export interface NodeData {

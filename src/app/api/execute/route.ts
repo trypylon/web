@@ -91,6 +91,10 @@ async function executeNode(
     throw new Error(`Unknown node type: ${node.data.type}`);
   }
 
+  if (!schemaNode.role || schemaNode.role !== "executor") {
+    throw new Error("Trying to run a node that isn't an executor");
+  }
+
   // Skip execution logging for config-only nodes
   if (!schemaNode.execute) {
     const instance = await schemaNode.initialize(node.data, {});
@@ -206,6 +210,7 @@ export async function POST(request: Request) {
 
                 // Skip nodes without execute function
                 const schemaNode = getNodeByType(node.data.type);
+                if (schemaNode?.role !== "executor") return;
                 if (!schemaNode?.execute) {
                   const instance = await schemaNode?.initialize(node.data, {});
                   results.set(nodeId, JSON.stringify(instance));

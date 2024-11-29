@@ -18,7 +18,7 @@ export function NodeCategory({ name, nodes }: NodeCategoryProps) {
   };
 
   return (
-    <Accordion type="single" collapsible className="w-full">
+    <Accordion type="single" collapsible className="w-full" defaultValue={name}>
       <AccordionItem value={name}>
         <AccordionTrigger className="text-sm hover:no-underline">
           {name}
