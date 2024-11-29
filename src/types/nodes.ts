@@ -35,6 +35,7 @@ export interface NodeParameter {
   type:
     | "string"
     | "number"
+    | "float"
     | "boolean"
     | "select"
     | "json"
@@ -50,6 +51,9 @@ export interface NodeParameter {
     field: string;
     value: any;
   }[];
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 export interface NodeCredential {

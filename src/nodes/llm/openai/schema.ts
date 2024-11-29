@@ -47,11 +47,15 @@ export const OpenAINode: BaseNode = {
     {
       name: "temperature",
       label: "Temperature",
-      type: "number",
+      type: "float",
       default: 0.7,
+      min: 0,
+      max: 1,
+      step: 0.1,
       optional: true,
-      description: "Controls randomness (0-2)",
-      validation: z.number().min(0).max(2),
+      description:
+        "Controls randomness in the output (0 = deterministic, 1 = creative)",
+      validation: z.number().min(0).max(1),
     },
     {
       name: "prompt",

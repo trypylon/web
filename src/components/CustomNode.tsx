@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Handle, Position, useEdges } from "reactflow";
-import { Component, ChevronDown } from "lucide-react";
+import { Component, ChevronDown, GripHorizontal } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,8 @@ import {
 import { useFlowStore } from "@/store/flowStore";
 import { registeredNodes } from "@/nodes";
 import { InputType } from "@/types/nodes";
+import { Input } from "@/components/ui/input";
+import { NodeParameterInput } from "@/components/node/NodeParameter";
 
 interface CustomNodeProps {
   id: string;
@@ -164,24 +166,25 @@ export function CustomNode({
     <div
       className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 ${
         selected ? "border-blue-500" : "border-gray-200 dark:border-gray-700"
-      } w-80 transition-all duration-200`}
+      } w-80 transition-all duration-200 cursor-default`}
+      draggable={false}
     >
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
+      {/* Header - Add dragHandle class and grip icon */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 dragHandle cursor-grab active:cursor-grabbing flex items-center">
+        <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-lg bg-blue-500">
               <Icon className="w-5 h-5 text-white" />
             </div>
             {isEditing ? (
-              <input
+              <Input
                 ref={labelInputRef}
                 type="text"
                 value={label}
                 onChange={handleLabelChange}
                 onBlur={handleLabelBlur}
                 onKeyDown={handleLabelKeyDown}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                className="flex-1 w-auto"
               />
             ) : (
               <span
@@ -200,10 +203,11 @@ export function CustomNode({
             </div>
           )}
         </div>
+        <GripHorizontal className="w-4 h-4 ml-2 text-gray-400" />
       </div>
 
-      {/* Content */}
-      <div className="p-4 space-y-6">
+      {/* Content - Make sure this area is not draggable */}
+      <div className="p-4 space-y-6 nodrag cursor-default select-text">
         {/* Model Selection (if applicable) */}
         {nodeSchema.parameters.find((p) => p.name === "model") && (
           <div className="space-y-2">
@@ -284,50 +288,13 @@ export function CustomNode({
               .filter((p) => !["model", "prompt"].includes(p.name))
               .map((param) => (
                 <div key={param.name} className="space-y-1">
-                  <label className="text-sm text-gray-700 dark:text-gray-300">
-                    {param.label}
-                  </label>
-                  {param.type === "select" ? (
-                    <select
-                      value={data.parameters?.[param.name] || param.default}
-                      onChange={(e) =>
-                        handleParameterChange(
-                          param.name,
-                          param.name === "dimensions"
-                            ? parseInt(e.target.value)
-                            : e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {param.options?.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : param.type === "number" ? (
-                    <input
-                      type="number"
-                      value={data.parameters?.[param.name] || ""}
-                      onChange={(e) =>
-                        handleParameterChange(
-                          param.name,
-                          parseFloat(e.target.value)
-                        )
-                      }
-                      className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={data.parameters?.[param.name] || ""}
-                      onChange={(e) =>
-                        handleParameterChange(param.name, e.target.value)
-                      }
-                      className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  )}
+                  <NodeParameterInput
+                    parameter={param}
+                    value={data.parameters?.[param.name]}
+                    onChange={(value) =>
+                      handleParameterChange(param.name, value)
+                    }
+                  />
                 </div>
               ))}
           </div>
