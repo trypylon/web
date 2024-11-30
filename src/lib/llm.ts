@@ -1,6 +1,5 @@
 import { PromptTemplate } from "@langchain/core/prompts";
 import { createDebugLog } from "@/lib/debug";
-import { DebugLog, InputType } from "@/types/nodes";
 import {
   HandleVectorStoreOptions,
   VectorStoreConfig,
