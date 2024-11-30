@@ -127,6 +127,9 @@ export const OpenAINode: BaseNode = {
     const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
 
+    console.log("OpenAI Node Inputs:", inputs);
+    console.log("Vector Store Input:", inputs?.vectorstore);
+
     debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
 
     // Build template and variables based on available inputs

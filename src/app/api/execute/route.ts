@@ -71,10 +71,19 @@ function getNodeInputs(
     .forEach((edge) => {
       const sourceResult = results.get(edge.source);
       if (sourceResult && edge.targetHandle) {
-        inputs[edge.targetHandle as InputType] = sourceResult;
+        // Parse the result if it's JSON
+        try {
+          // Check if it's a JSON string
+          JSON.parse(sourceResult);
+          inputs[edge.targetHandle as InputType] = sourceResult;
+        } catch {
+          // If not JSON, use as-is
+          inputs[edge.targetHandle as InputType] = sourceResult;
+        }
       }
     });
 
+  console.log(`Inputs for node ${nodeId}:`, inputs);
   return inputs as Record<InputType, string>;
 }
 
@@ -210,9 +219,11 @@ export async function POST(request: Request) {
 
                 // Skip nodes without execute function
                 const schemaNode = getNodeByType(node.data.type);
-                if (schemaNode?.role !== "executor") return;
-                if (!schemaNode?.execute) {
-                  const instance = await schemaNode?.initialize(node.data, {});
+                if (!schemaNode) return;
+
+                // Only initialize config nodes
+                if (schemaNode.role === "config") {
+                  const instance = await schemaNode.initialize(node.data, {});
                   results.set(nodeId, JSON.stringify(instance));
                   return;
                 }
