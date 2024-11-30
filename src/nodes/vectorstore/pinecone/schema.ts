@@ -69,8 +69,9 @@ export const PineconeVectorStoreNode: BaseNode = {
   ],
 
   async initialize(nodeData: NodeData) {
-    // Just return the configuration
+    // Return the configuration with the type field
     return {
+      type: "pinecone",
       indexName: nodeData.parameters.indexName,
       namespace: nodeData.parameters.namespace,
       topK: nodeData.parameters.topK || 3,

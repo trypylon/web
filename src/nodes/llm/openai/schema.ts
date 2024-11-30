@@ -11,10 +11,8 @@ import {
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { PineconeStore } from "@langchain/pinecone";
-import { Pinecone } from "@pinecone-database/pinecone";
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { handleVectorStore } from "@/lib/llm";
+import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { createDebugLog } from "@/lib/debug";
 
 interface ExtendedNodeData extends NodeData {
@@ -123,12 +121,11 @@ export const OpenAINode: BaseNode = {
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) {
+    console.log("OpenAI execute called with inputs:", inputs);
+
     const updatedNodeData = { ...nodeData } as ExtendedNodeData;
     const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
-
-    console.log("OpenAI Node Inputs:", inputs);
-    console.log("Vector Store Input:", inputs?.vectorstore);
 
     debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
 
@@ -139,137 +136,17 @@ export const OpenAINode: BaseNode = {
     };
 
     if (inputs?.vectorstore) {
-      try {
-        const vectorStoreConfig = JSON.parse(inputs.vectorstore);
-        debugLogs.push(
-          createDebugLog(
-            "intermediate",
-            "Vector Store Config",
-            vectorStoreConfig
-          )
-        );
+      console.log("Processing vectorstore input");
+      const vectorStoreResponse = await handleVectorStore({
+        llm: instance.llm as unknown as BaseLanguageModel<any, any>,
+        vectorStoreInput: inputs.vectorstore,
+        userPrompt: promptText,
+        debugLogs: [],
+      });
 
-        // Choose embedding model based on dimensions
-        let embeddings;
-        console.log(
-          "Vector dimensions:",
-          vectorStoreConfig.dimensions,
-          typeof vectorStoreConfig.dimensions
-        );
-
-        // Fix the comparison - ensure we're comparing numbers
-        const dimensions = Number(vectorStoreConfig.dimensions);
-        if (dimensions === 1024) {
-          console.log("Using Microsoft e5-large embeddings");
-          embeddings = new HuggingFaceInferenceEmbeddings({
-            apiKey: process.env.HUGGINGFACE_API_KEY,
-            model: "intfloat/multilingual-e5-large",
-          });
-        } else {
-          console.log("Using OpenAI embeddings");
-          embeddings = new OpenAIEmbeddings({
-            openAIApiKey: process.env.OPENAI_API_KEY,
-          });
-        }
-
-        // Initialize Pinecone
-        const pinecone = new Pinecone({
-          apiKey: process.env.PINECONE_API_KEY!,
-        });
-
-        const index = pinecone.Index(vectorStoreConfig.indexName);
-
-        // Create vector store with the embeddings
-        const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-          pineconeIndex: index,
-          namespace: vectorStoreConfig.namespace,
-        });
-
-        // Generate search query
-        const queryGenPrompt = PromptTemplate.fromTemplate(
-          `Given the following user request, generate a concise search query that would help find relevant information in a database of movies.
-          Focus on key terms and concepts that would match movie descriptions.
-
-          User Request: {input}
-
-          Search Query:`
-        );
-        const searchQuery = await instance.llm.invoke(
-          await queryGenPrompt.format({ input: promptText })
-        );
-
-        debugLogs.push(
-          createDebugLog(
-            "intermediate",
-            "Generated Search Query",
-            searchQuery.content
-          )
-        );
-
-        // Search vector store
-        const docs = await vectorStore.similaritySearch(
-          searchQuery.content as string,
-          vectorStoreConfig.topK || 3
-        );
-
-        debugLogs.push(
-          createDebugLog(
-            "intermediate",
-            "Retrieved Documents",
-            docs.map((doc) => ({
-              content: doc.pageContent,
-              metadata: doc.metadata,
-            }))
-          )
-        );
-
-        if (!docs || docs.length === 0) {
-          console.log("No documents found in vector store");
-          template = `You are a helpful assistant. The user asked: {input}
-
-Unfortunately, I couldn't find any relevant information in the database. Please provide a general response or suggest alternatives.`;
-        } else {
-          // Now format a response using the retrieved documents
-          template = `You are a helpful assistant with access to a movie database. 
-Use the following retrieved movie information to help answer the user's request.
-If the retrieved movies aren't relevant or sufficient, you can suggest similar movies based on the user's intent.
-
-Retrieved Movie Information:
-{docs}
-
-User Request: {input}
-
-Please provide a friendly, helpful response that directly addresses the user's request.`;
-
-          // Format the documents to include metadata
-          inputValues.docs = docs
-            .map((doc) => {
-              const metadata = doc.metadata;
-              return `Title: ${metadata.title} (${metadata.year})
-Box Office: $${metadata["box-office"].toLocaleString()}
-Genre: ${metadata.genre}
-Summary: ${metadata.summary}`;
-            })
-            .join("\n\n");
-
-          console.log("Formatted docs:", inputValues.docs);
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          debugLogs.push(
-            createDebugLog("intermediate", "Vector Store Error", error.message)
-          );
-        } else {
-          debugLogs.push(
-            createDebugLog(
-              "intermediate",
-              "Vector Store Error",
-              "Unknown error"
-            )
-          );
-        }
-        throw error;
-      }
+      template = vectorStoreResponse.template;
+      Object.assign(inputValues, vectorStoreResponse.inputValues);
+      debugLogs.push(...vectorStoreResponse.debugLogs);
     }
 
     // Add context if available
@@ -285,9 +162,6 @@ Summary: ${metadata.summary}`;
     }
 
     // Create and format the prompt
-    console.log("Final template:", template);
-    console.log("Final input values:", inputValues);
-
     const promptTemplate = PromptTemplate.fromTemplate(template);
     const formattedPrompt = await promptTemplate.format(inputValues);
 
