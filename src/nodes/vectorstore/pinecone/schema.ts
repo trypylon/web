@@ -25,12 +25,10 @@ export const PineconeVectorStoreNode: BaseNode = {
       label: "Vector Dimensions",
       type: "select",
       options: [
-        { label: "OpenAI Standard (1536)", value: 1536 },
-        { label: "Microsoft e5-large (1024)", value: 1024 },
-        // { label: "OpenAI Small (384)", value: 384 },
-        // { label: "Custom 768", value: 768 },
+        { label: "OpenAI Standard (1536)", value: "1536" },
+        { label: "Microsoft e5-large (1024)", value: "1024" },
       ],
-      default: 1536,
+      default: "1536",
       description: "Vector dimensions of your Pinecone index",
     },
     {
@@ -76,7 +74,7 @@ export const PineconeVectorStoreNode: BaseNode = {
       indexName: nodeData.parameters.indexName,
       namespace: nodeData.parameters.namespace,
       topK: nodeData.parameters.topK || 3,
-      dimensions: nodeData.parameters.dimensions,
+      dimensions: parseInt(nodeData.parameters.dimensions || "1536"),
     };
   },
 };

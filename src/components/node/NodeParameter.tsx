@@ -20,13 +20,25 @@ export function NodeParameterInput({
   value,
   onChange,
 }: NodeParameterProps) {
+  // Common wrapper for all inputs with label and description
+  const InputWrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {parameter.label}
+      </label>
+      {children}
+      {parameter.description && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {parameter.description}
+        </p>
+      )}
+    </div>
+  );
+
   switch (parameter.type) {
     case "float":
       return (
-        <div className="space-y-1">
-          <label className="text-sm text-gray-700 dark:text-gray-300">
-            {parameter.label}
-          </label>
+        <InputWrapper>
           <Input
             type="number"
             min={parameter.min}
@@ -42,7 +54,6 @@ export function NodeParameterInput({
             onBlur={(e) => {
               const val = parseFloat(e.target.value);
               if (!isNaN(val)) {
-                // Clamp the value between min and max if they exist
                 const clampedVal =
                   parameter.min !== undefined && parameter.max !== undefined
                     ? Math.min(Math.max(val, parameter.min), parameter.max)
@@ -52,58 +63,73 @@ export function NodeParameterInput({
             }}
             className="w-full"
           />
-          {parameter.description && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {parameter.description}
-            </p>
-          )}
-        </div>
+        </InputWrapper>
       );
 
     case "select":
       return (
-        <Select value={value ?? parameter.default} onValueChange={onChange}>
-          <SelectTrigger>
-            <SelectValue
-              placeholder={`Select ${parameter.label.toLowerCase()}`}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {parameter.options?.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <InputWrapper>
+          <Select value={value ?? parameter.default} onValueChange={onChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={`Select ${parameter.label.toLowerCase()}`}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {parameter.options?.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </InputWrapper>
       );
 
     case "number":
       return (
-        <Input
-          type="number"
-          value={value ?? ""}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-          onBlur={(e) => onChange(parseFloat(e.target.value))}
-        />
+        <InputWrapper>
+          <Input
+            type="number"
+            value={value ?? parameter.default ?? ""}
+            min={parameter.min}
+            max={parameter.max}
+            step={parameter.step ?? 1}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              if (!isNaN(val)) {
+                onChange(val);
+              }
+            }}
+            className="w-full"
+          />
+        </InputWrapper>
       );
 
     case "string":
       return (
-        <Input
-          type="text"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <InputWrapper>
+          <Input
+            type="text"
+            value={value ?? parameter.default ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full"
+            placeholder={`Enter ${parameter.label.toLowerCase()}`}
+          />
+        </InputWrapper>
       );
 
     default:
       return (
-        <Input
-          type="text"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <InputWrapper>
+          <Input
+            type="text"
+            value={value ?? parameter.default ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full"
+            placeholder={`Enter ${parameter.label.toLowerCase()}`}
+          />
+        </InputWrapper>
       );
   }
 }
