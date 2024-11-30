@@ -40,12 +40,26 @@ export function CustomNode({
   const edges = useEdges();
 
   // Find the node schema
-  console.log({ registeredNodes });
   const nodeSchema = registeredNodes.find((node) => node.type === data.type);
-  console.log({ nodeSchema });
   if (!nodeSchema) return null;
 
   const Icon = nodeSchema.icon || Component;
+
+  // Add this function to handle parameter input changes
+  const handleParameterInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { name, value } = e.target;
+    updateNodeData(id, {
+      parameters: {
+        ...data.parameters,
+        [name]: value,
+      },
+    });
+  };
 
   // Check if this node has incoming connections for specific input types
   const getInputConnection = (inputType: InputType) => {
@@ -73,6 +87,8 @@ export function CustomNode({
   };
 
   const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     setLabel(event.target.value);
   };
 
@@ -139,7 +155,11 @@ export function CustomNode({
           {inputType === InputType.PROMPT && !isConnected ? (
             <textarea
               value={data.parameters?.prompt || ""}
-              onChange={(e) => handleParameterChange("prompt", e.target.value)}
+              onChange={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleParameterChange("prompt", e.target.value);
+              }}
               placeholder="Enter prompt..."
               className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
@@ -207,7 +227,11 @@ export function CustomNode({
       </div>
 
       {/* Content - Make sure this area is not draggable */}
-      <div className="p-4 space-y-6 nodrag cursor-default select-text">
+      <div
+        className="p-4 space-y-6"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {/* Model Selection (if applicable) */}
         {nodeSchema.parameters.find((p) => p.name === "model") && (
           <div className="space-y-2">
@@ -288,13 +312,29 @@ export function CustomNode({
               .filter((p) => !["model", "prompt"].includes(p.name))
               .map((param) => (
                 <div key={param.name} className="space-y-1">
-                  <NodeParameterInput
-                    parameter={param}
-                    value={data.parameters?.[param.name]}
-                    onChange={(value) =>
-                      handleParameterChange(param.name, value)
-                    }
-                  />
+                  {param.type === "string" ? (
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-700 dark:text-gray-300">
+                        {param.label}
+                      </label>
+                      <Input
+                        name={param.name}
+                        value={data.parameters?.[param.name] || ""}
+                        onChange={handleParameterInputChange}
+                        className="nodrag"
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  ) : (
+                    <NodeParameterInput
+                      parameter={param}
+                      value={data.parameters?.[param.name]}
+                      onChange={(value) =>
+                        handleParameterChange(param.name, value)
+                      }
+                    />
+                  )}
                 </div>
               ))}
           </div>

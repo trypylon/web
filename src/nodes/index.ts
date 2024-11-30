@@ -3,12 +3,14 @@ import { OpenAINode } from "./llm/openai/schema";
 import { AnthropicNode } from "./llm/anthropic/schema";
 import { PineconeVectorStoreNode } from "./vectorstore/pinecone/schema";
 import { Bot } from "lucide-react"; // Default icon
+import { QdrantVectorStoreNode } from "./vectorstore/qdrant/schema";
 
 // Add nodes here to register them in the system
 export const registeredNodes: BaseNode[] = [
   OpenAINode,
   AnthropicNode,
   PineconeVectorStoreNode,
+  QdrantVectorStoreNode,
 ];
 
 // Helper to get node by type

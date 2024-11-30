@@ -44,7 +44,7 @@ export function NodeParameterInput({
             min={parameter.min}
             max={parameter.max}
             step={parameter.step ?? 0.1}
-            value={value ?? parameter.default}
+            value={value ?? parameter.default ?? ""}
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               if (!isNaN(val)) {
@@ -69,7 +69,10 @@ export function NodeParameterInput({
     case "select":
       return (
         <InputWrapper>
-          <Select value={value ?? parameter.default} onValueChange={onChange}>
+          <Select
+            value={value ?? parameter.default ?? ""}
+            onValueChange={onChange}
+          >
             <SelectTrigger className="w-full">
               <SelectValue
                 placeholder={`Select ${parameter.label.toLowerCase()}`}

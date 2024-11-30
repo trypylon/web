@@ -1,36 +1,11 @@
-import { DebugLog, InputType } from "@/types/nodes";
-import { createDebugLog } from "@/lib/debug";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { BaseLanguageModel } from "@langchain/core/language_models/base";
-
-interface VectorStoreConfig {
-  type: "pinecone" | "pgvector";
-  indexName: string;
-  namespace?: string;
-  topK: number;
-  dimensions: number;
-  [key: string]: any;
-}
-
-interface VectorStoreResult {
-  docs: Array<{
-    pageContent: string;
-    metadata: Record<string, any>;
-  }>;
-}
-
-export interface HandleVectorStoreOptions {
-  llm: BaseLanguageModel;
-  vectorStoreInput: string;
-  userPrompt: string;
-  debugLogs: DebugLog[];
-}
-
-export interface VectorStoreResponse {
-  template: string;
-  inputValues: Record<string, string>;
-  debugLogs: DebugLog[];
-}
+import { createDebugLog } from "@/lib/debug";
+import { DebugLog, InputType } from "@/types/nodes";
+import {
+  HandleVectorStoreOptions,
+  VectorStoreConfig,
+  VectorStoreResponse,
+} from "@/types/vectorstore";
 
 export async function handleVectorStore({
   llm,
@@ -174,7 +149,18 @@ Genre: ${metadata.genre}
 Summary: ${metadata.summary}`;
         })
         .join("\n\n");
-    // Add cases for other vector stores
+    case "qdrant":
+      return docs
+        .map((doc) => {
+          const metadata = doc.metadata;
+          return `Title: ${metadata.title || "Untitled"}
+${metadata.description || doc.pageContent}
+${Object.entries(metadata)
+  .filter(([key]) => !["title", "description"].includes(key))
+  .map(([key, value]) => `${key}: ${value}`)
+  .join("\n")}`;
+        })
+        .join("\n\n");
     default:
       return docs
         .map(
