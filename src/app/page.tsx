@@ -1,3 +1,4 @@
+import { AuthWrapper } from "@/components/ui/auth-wrapper";
 import dynamic from "next/dynamic";
 
 // Dynamically import Flow component with SSR disabled
@@ -18,7 +19,9 @@ const Flow = dynamic(
 export default function Home() {
   return (
     <main className="h-screen">
-      <Flow />
+      <AuthWrapper>
+        <Flow />
+      </AuthWrapper>
     </main>
   );
 }

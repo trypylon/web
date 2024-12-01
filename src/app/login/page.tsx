@@ -1,84 +1,45 @@
-"use client";
+/* eslint-disable @typescript-eslint/no-misused-promises */
+import LogoButton from "@/components/ui/logo-button";
+import { AuthFormComponent } from "@/components/ui/auth-form";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Github, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/context/AuthContext";
-import Image from "next/image";
-
-export default function LoginPage() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
-
-  useEffect(() => {
-    if (user && !loading) {
-      router.push("/");
-    }
-  }, [user, loading, router]);
-
-  const handleGithubLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  };
-
-  const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-gray-500">Loading...</div>
-      </div>
-    );
-  }
-
-  if (user) return null;
-
+export default function AuthenticationPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="mb-8">
-        <Image src="/pylon.svg" alt="Pylon Logo" width={64} height={64} />
-      </div>
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Welcome to Pylon
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in to start building AI workflows
-          </p>
+    <div>
+      <div
+        className="container relative h-screen flex-col items-center
+          justify-center sm:grid lg:max-w-none lg:grid-cols-2 lg:px-0"
+      >
+        {/* the gray thing on the left side */}
+        <div
+          className="relative hidden h-full flex-col bg-muted p-10 text-white
+            lg:flex dark:border-r"
+        >
+          <div className="absolute inset-0 bg-zinc-900" />
+          <LogoButton />
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                {`"Pylon makes building AI workflows as simple as connecting the dots. It's visual programming for the AI era."`}
+              </p>
+              <footer className="text-sm">- Me, probably</footer>
+            </blockquote>
+          </div>
         </div>
-
-        <div className="space-y-4">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGithubLogin}
+        <div className="absolute sm:hidden flex">
+          <LogoButton />
+        </div>
+        <div className="lg:p-8 w-full flex h-full ">
+          <div
+            className="mx-auto flex w-full flex-col justify-center space-y-6
+              sm:w-[350px]"
           >
-            <Github className="mr-2 h-4 w-4" />
-            Continue with GitHub
-          </Button>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogleLogin}
-          >
-            <Mail className="mr-2 h-4 w-4" />
-            Continue with Google
-          </Button>
+            {/* <div className="flex flex-col space-y-2 text-center">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Build powerful AI workflows visually
+              </h1>
+            </div> */}
+            <AuthFormComponent />
+          </div>
         </div>
       </div>
     </div>
