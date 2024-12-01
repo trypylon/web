@@ -16,7 +16,6 @@ export function getBaseUrl() {
     // Reference for vercel.com
     return `https://${process.env.VERCEL_URL}`;
   }
-
   // Assume localhost
   return `http://localhost:${process.env.PORT ?? 3000}`;
 }
