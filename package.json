@@ -25,6 +25,8 @@
     "@radix-ui/react-popover": "^1.0.7",
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.46.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "langchain": "^0.1.21",
