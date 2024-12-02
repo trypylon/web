@@ -11,7 +11,11 @@ interface AuthFormProps {
 
 export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
   const supabase = createNewBrowserClient();
-  const baseUrl = getBaseUrl();
+  const baseUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://app.modelflowai.com";
+
   // const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
   const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
   console.log({ baseUrl, redirectTo });
@@ -89,7 +93,7 @@ export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
         <p className="px-8 text-center text-sm text-muted-foreground">
           By clicking continue, you agree to our{" "}
           <Link
-            href="/terms-of-service"
+            href="/terms"
             target="_blank"
             className="underline underline-offset-4 hover:text-primary"
           >
@@ -97,7 +101,7 @@ export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
           </Link>{" "}
           and{" "}
           <Link
-            href="/privacy-policy"
+            href="/privacyy"
             target="_blank"
             className="underline underline-offset-4 hover:text-primary"
           >
