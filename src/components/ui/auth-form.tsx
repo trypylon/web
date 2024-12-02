@@ -101,7 +101,7 @@ export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
           </Link>{" "}
           and{" "}
           <Link
-            href="/privacyy"
+            href="/privacy"
             target="_blank"
             className="underline underline-offset-4 hover:text-primary"
           >
