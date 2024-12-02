@@ -12,8 +12,9 @@ interface AuthFormProps {
 export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
   const supabase = createNewBrowserClient();
   const baseUrl = getBaseUrl();
-  console.log({ baseUrl });
+  // const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
   const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
+  console.log({ baseUrl, redirectTo });
   console.log(baseUrl, redirectTo);
   const handleGoogleAuth = async () => {
     await supabase.auth.signInWithOAuth({
