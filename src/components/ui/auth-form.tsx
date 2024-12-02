@@ -1,41 +1,37 @@
-'use client'
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { createNewBrowserClient } from '@/lib/supabase/client'
-import Link from 'next/link'
+import { Button } from "@/components/ui/button";
+import { createNewBrowserClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/utils";
+import Link from "next/link";
 
 interface AuthFormProps {
-  nextUrl?: string
+  nextUrl?: string;
 }
 
-export function AuthFormComponent({
-  nextUrl = '/'
-}: AuthFormProps) {
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : 'https://app.modelflowai.com'
-
-  const supabase = createNewBrowserClient()
-  const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ''}`
-
+export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
+  const supabase = createNewBrowserClient();
+  const baseUrl = getBaseUrl();
+  console.log({ baseUrl });
+  const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
+  console.log(baseUrl, redirectTo);
   const handleGoogleAuth = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
-        redirectTo
-      }
-    })
-  }
+        redirectTo,
+      },
+    });
+  };
 
   const handleGithubAuth = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: 'github',
+      provider: "github",
       options: {
-        redirectTo
-      }
-    })
-  }
+        redirectTo,
+      },
+    });
+  };
 
   return (
     <div
@@ -43,20 +39,14 @@ export function AuthFormComponent({
         sm:max-w-[425px] p-6 space-y-4 rounded-lg shadow-sm"
     >
       <div className="space-y-2 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Continue with
-        </h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Continue with</h2>
         <p className="text-sm text-muted-foreground">
           Choose a method to continue
         </p>
       </div>
 
       <div className="flex flex-col space-y-4">
-        <Button
-          variant="outline"
-          onClick={handleGoogleAuth}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={handleGoogleAuth} className="w-full">
           <svg
             className="mr-2 h-4 w-4"
             aria-hidden="true"
@@ -74,11 +64,7 @@ export function AuthFormComponent({
           </svg>
           Google
         </Button>
-        <Button
-          variant="outline"
-          onClick={handleGithubAuth}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={handleGithubAuth} className="w-full">
           <svg
             className="mr-2 h-4 w-4"
             aria-hidden="true"
@@ -100,15 +86,15 @@ export function AuthFormComponent({
 
       <div className="text-xs text-center text-muted-foreground">
         <p className="px-8 text-center text-sm text-muted-foreground">
-          By clicking continue, you agree to our{' '}
+          By clicking continue, you agree to our{" "}
           <Link
             href="/terms-of-service"
             target="_blank"
             className="underline underline-offset-4 hover:text-primary"
           >
             Terms of Service
-          </Link>{' '}
-          and{' '}
+          </Link>{" "}
+          and{" "}
           <Link
             href="/privacy-policy"
             target="_blank"
@@ -120,5 +106,5 @@ export function AuthFormComponent({
         </p>
       </div>
     </div>
-  )
+  );
 }
