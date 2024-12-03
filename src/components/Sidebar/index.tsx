@@ -15,7 +15,6 @@ export function Sidebar() {
           </p>
         </div>
       </div>
-
       <NodeList />
     </div>
   );

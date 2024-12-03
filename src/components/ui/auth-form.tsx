@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { createNewBrowserClient } from "@/lib/supabase/client";
-import { getBaseUrl } from "@/lib/utils";
 import Link from "next/link";
 
 interface AuthFormProps {
