@@ -6,12 +6,11 @@ import { type CookieOptions, createServerClient } from "@supabase/ssr";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  console.log({ origin });
   const code = searchParams.get("code");
-  // if "next" is in param, use it as the redirect URL
-  console.log("inside this confirm/route");
-  const next = searchParams.get("next") ?? "/";
-  console.log("inside this confirm/route");
+  // Get the next parameter, decode it if it exists
+  const next = searchParams.get("next");
+  const decodedNext = next ? decodeURIComponent(next) : "/";
+
   if (code) {
     const cookieStore = cookies();
     const supabase = createServerClient(
@@ -31,12 +30,13 @@ export async function GET(request: Request) {
         },
       }
     );
+
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      // Redirect to the decoded return URL
+      return NextResponse.redirect(`${origin}${decodedNext}`);
     }
   }
 
-  // return the user to an error page with instructions
   return NextResponse.redirect(`${origin}/auth/error`);
 }

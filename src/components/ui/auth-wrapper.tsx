@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createNewBrowserClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface AuthWrapperProps {
@@ -14,6 +14,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createNewBrowserClient();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -21,19 +22,20 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
       if (!error && data?.user) {
         setIsLoggedIn(true);
       } else {
-        router.push("/login");
+        const returnUrl = encodeURIComponent(pathname);
+        router.push(`/login?returnUrl=${returnUrl}`);
       }
       setIsLoading(false);
     };
     void checkUser();
-  }, [supabase.auth, router]);
+  }, [supabase.auth, router, pathname]);
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   if (!isLoggedIn) {
-    return null; // This shouldn't be visible as we're redirecting non-logged in users
+    return null;
   }
 
   return <>{children}</>;

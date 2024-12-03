@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { createNewBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 interface AuthFormProps {
   nextUrl?: string;
@@ -10,15 +11,17 @@ interface AuthFormProps {
 
 export function AuthFormComponent({ nextUrl = "/" }: AuthFormProps) {
   const supabase = createNewBrowserClient();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
+
   const baseUrl =
     typeof window !== "undefined"
       ? window.location.origin
       : "https://app.modelflowai.com";
 
-  // const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
-  const redirectTo = `${baseUrl}/auth/callback?next=${nextUrl ?? ""}`;
-  console.log({ baseUrl, redirectTo });
-  console.log(baseUrl, redirectTo);
+  // Use the returnUrl from the URL if available, otherwise use nextUrl prop
+  const redirectTo = `${baseUrl}/auth/callback?next=${returnUrl || nextUrl}`;
+
   const handleGoogleAuth = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
