@@ -31,7 +31,7 @@ export default async function PrivatePage() {
 
   return (
     <AuthWrapper>
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-4 ml-16">
         <Card className="max-w-md mx-auto">
           <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="w-16 h-16">
