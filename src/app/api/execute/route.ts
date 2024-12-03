@@ -1,3 +1,4 @@
+import { createServersideClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { Node, Edge } from "reactflow";
@@ -83,7 +84,6 @@ function getNodeInputs(
       }
     });
 
-  console.log(`Inputs for node ${nodeId}:`, inputs);
   return inputs as Record<InputType, string>;
 }
 
@@ -93,7 +93,8 @@ async function executeNode(
   inputs: Record<InputType, string>,
   encoder: TextEncoder,
   controller: ReadableStreamDefaultController,
-  stepId: string
+  stepId: string,
+  credentials: Record<string, string>
 ) {
   const schemaNode = getNodeByType(node.data.type);
   if (!schemaNode) {
@@ -106,7 +107,7 @@ async function executeNode(
 
   // Skip execution logging for config-only nodes
   if (!schemaNode.execute) {
-    const instance = await schemaNode.initialize(node.data, {});
+    const instance = await schemaNode.initialize(node.data, { credentials });
     return JSON.stringify(instance);
   }
 
@@ -129,7 +130,7 @@ async function executeNode(
       )
     );
 
-    const instance = await schemaNode.initialize(node.data, {});
+    const instance = await schemaNode.initialize(node.data, { credentials });
     const result = await schemaNode.execute(instance, node.data, inputs);
     const endTime = Date.now();
 
@@ -183,9 +184,43 @@ async function executeNode(
 }
 
 export async function POST(request: Request) {
+  const supabase = createServersideClient();
   const encoder = new TextEncoder();
 
   try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fetch user's credentials
+    const { data: credentials, error: credError } = await supabase
+      .from("credentials")
+      .select("*")
+      .eq("user_id", user.id);
+
+    if (credError) {
+      console.error("Error fetching credentials:", credError);
+      throw new Error("Failed to fetch credentials");
+    }
+
+    // Convert credentials array to a map for easy access
+    const credentialsMap = credentials.reduce((acc, cred) => {
+      acc[cred.key] = cred.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    // Set credentials in process.env for this request
+    // This will override env variables only if the user has set them
+    Object.entries(credentialsMap).forEach(([key, value]) => {
+      console.log("adding", key, value);
+      process.env[key] = value as string;
+    });
+
     const { nodes, edges, executionSteps } = await request.json();
 
     if (!Array.isArray(nodes) || !Array.isArray(edges)) {
@@ -242,7 +277,8 @@ export async function POST(request: Request) {
                     inputs,
                     encoder,
                     controller,
-                    stepId
+                    stepId,
+                    credentialsMap
                   );
                   results.set(nodeId, result);
                 } catch (error) {

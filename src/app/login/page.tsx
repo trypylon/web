@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import LogoButton from "@/components/ui/logo-button";
 import { AuthFormComponent } from "@/components/ui/auth-form";
+import { Suspense } from "react";
 
 export default function AuthenticationPage() {
   return (
@@ -38,7 +39,9 @@ export default function AuthenticationPage() {
                 Build powerful AI workflows visually
               </h1>
             </div> */}
-            <AuthFormComponent />
+            <Suspense fallback={<div>Loading...</div>}>
+              <AuthFormComponent />
+            </Suspense>
           </div>
         </div>
       </div>

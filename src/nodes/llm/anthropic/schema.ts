@@ -89,7 +89,8 @@ export const AnthropicNode: BaseNode = {
     return new ChatAnthropic({
       modelName: model,
       temperature,
-      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+      anthropicApiKey:
+        options.credentials?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY,
       maxRetries: 3,
       maxConcurrency: 1,
       clientOptions: {

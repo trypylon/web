@@ -2,9 +2,10 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { PineconeStore } from "@langchain/pinecone";
+import { NodeInitOptions } from "@/types/nodes";
 
 export default {
-  async initialize(config: any) {
+  async initialize(config: any, options?: NodeInitOptions) {
     console.log("Pinecone implementation initialize called");
 
     // Choose embedding model based on dimensions
@@ -13,18 +14,22 @@ export default {
 
     if (dimensions === 1024) {
       embeddings = new HuggingFaceInferenceEmbeddings({
-        apiKey: process.env.HUGGINGFACE_API_KEY,
+        apiKey:
+          options?.credentials?.HUGGINGFACE_API_KEY ||
+          process.env.HUGGINGFACE_API_KEY,
         model: "intfloat/multilingual-e5-large",
       });
     } else {
       embeddings = new OpenAIEmbeddings({
-        openAIApiKey: process.env.OPENAI_API_KEY,
+        openAIApiKey:
+          options?.credentials?.OPENAI_API_KEY || process.env.OPENAI_API_KEY,
       });
     }
 
     // Initialize Pinecone
     const pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!,
+      apiKey:
+        options?.credentials?.PINECONE_API_KEY || process.env.PINECONE_API_KEY,
     });
 
     const index = pinecone.Index(config.indexName);

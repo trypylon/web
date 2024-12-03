@@ -108,7 +108,8 @@ export const OpenAINode: BaseNode = {
     const llm = new ChatOpenAI({
       modelName: model,
       temperature,
-      openAIApiKey: process.env.OPENAI_API_KEY,
+      openAIApiKey:
+        options.credentials?.OPENAI_API_KEY || process.env.OPENAI_API_KEY,
       maxRetries: 3,
       maxConcurrency: 1,
     });

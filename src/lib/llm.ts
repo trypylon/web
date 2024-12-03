@@ -5,6 +5,7 @@ import {
   VectorStoreConfig,
   VectorStoreResponse,
 } from "@/types/vectorstore";
+import { NodeInitOptions } from "@/types/nodes";
 
 export async function handleVectorStore({
   llm,
@@ -103,7 +104,10 @@ Please provide a friendly, helpful response that directly addresses the user's r
 const vectorStoreCache = new Map<string, any>();
 
 // Helper function to get the appropriate vector store instance
-async function getVectorStore(config: VectorStoreConfig) {
+async function getVectorStore(
+  config: VectorStoreConfig,
+  options?: NodeInitOptions
+) {
   const cacheKey = `${config.type}-${config.indexName}-${config.namespace}`;
 
   if (vectorStoreCache.has(cacheKey)) {
@@ -121,7 +125,10 @@ async function getVectorStore(config: VectorStoreConfig) {
       throw new Error(`Vector store type '${config.type}' is not supported`);
     });
 
-    const instance = await vectorStoreModule.default.initialize(config);
+    const instance = await vectorStoreModule.default.initialize(
+      config,
+      options
+    );
     vectorStoreCache.set(cacheKey, instance);
     return instance;
   } catch (error) {
