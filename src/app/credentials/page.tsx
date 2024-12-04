@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Key, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Key, Trash2, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AuthWrapper } from "@/components/ui/auth-wrapper";
@@ -20,6 +20,11 @@ export default function CredentialsPage() {
   });
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  const [apiKeys, setApiKeys] = useState<
+    Array<{ id: string; name: string; key: string }>
+  >([]);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [creatingKey, setCreatingKey] = useState(false);
 
   useEffect(() => {
     fetch("/api/credentials")
@@ -30,6 +35,14 @@ export default function CredentialsPage() {
           return acc;
         }, {});
         setCredentials((prev) => ({ ...prev, ...existingCreds }));
+      });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/keys")
+      .then((res) => res.json())
+      .then((data) => {
+        setApiKeys(data.keys);
       });
   }, []);
 
@@ -98,6 +111,39 @@ export default function CredentialsPage() {
     }
   };
 
+  const handleCreateKey = async () => {
+    if (!newKeyName || creatingKey) return;
+
+    try {
+      setCreatingKey(true);
+      const response = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newKeyName }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create API key");
+      }
+
+      const { key } = await response.json();
+      setApiKeys([...apiKeys, { id: key, name: newKeyName, key }]);
+      setNewKeyName("");
+      toast({
+        title: "API Key Created",
+        description: "Your new API key has been created",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
   return (
     <AuthWrapper>
       <div className="max-w-4xl mx-auto px-4 py-8 w-full">
@@ -158,6 +204,61 @@ export default function CredentialsPage() {
           <Button onClick={handleSave} className="w-full mt-6">
             Save Changes
           </Button>
+        </div>
+
+        <div className="mt-12 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">API Keys</h2>
+            <div className="flex items-center space-x-2">
+              <Input
+                placeholder="Key name"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                className="w-48"
+              />
+              <Button
+                onClick={handleCreateKey}
+                disabled={!newKeyName || creatingKey}
+                className="space-x-2"
+              >
+                {creatingKey ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                <span>Create Key</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {apiKeys.map((apiKey) => (
+              <div
+                key={apiKey.id}
+                className="border rounded-lg p-4 flex items-center justify-between"
+              >
+                <div>
+                  <h3 className="font-medium">{apiKey.name}</h3>
+                  <code className="text-sm bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded">
+                    {apiKey.key}
+                  </code>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(apiKey.key);
+                    toast({
+                      title: "Copied",
+                      description: "API key copied to clipboard",
+                    });
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </AuthWrapper>

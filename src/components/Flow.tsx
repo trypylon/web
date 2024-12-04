@@ -23,6 +23,7 @@ import {
   XCircle,
   Save,
   FolderOpen,
+  Rocket,
 } from "lucide-react";
 import { ExecutionLog } from "./ExecutionLog";
 import { TemplateSelector } from "./TemplateSelector";
@@ -33,6 +34,8 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { createNewBrowserClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
+import { DeployDialog } from "./DeployDialog";
+import { cn } from "@/lib/utils";
 
 const nodeTypes = {
   custom: CustomNode,
@@ -56,6 +59,8 @@ function FlowEditor() {
   const supabase = createNewBrowserClient();
   const router = useRouter();
   const { toast } = useToast();
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [deploymentStatus, setDeploymentStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -167,6 +172,21 @@ function FlowEditor() {
     localStorage.setItem("tempFlow", JSON.stringify({ nodes, edges }));
     router.push("/login");
   };
+
+  useEffect(() => {
+    if (currentCanvasId) {
+      fetch("/api/deployments")
+        .then((res) => res.json())
+        .then((data) => {
+          const deployment = data.deployments?.find(
+            (d: any) => d.canvas_id === currentCanvasId
+          );
+          if (deployment) {
+            setDeploymentStatus(deployment.id);
+          }
+        });
+    }
+  }, [currentCanvasId]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
@@ -283,6 +303,29 @@ function FlowEditor() {
                   </>
                 )}
               </Button>
+
+              {/* Only show Deploy if user is logged in and has a saved canvas */}
+              {user && currentCanvasId && (
+                <Button
+                  onClick={() =>
+                    deploymentStatus
+                      ? router.push(`/deployments/${deploymentStatus}`)
+                      : setDeployDialogOpen(true)
+                  }
+                  variant="outline"
+                  className={cn(
+                    "space-x-2",
+                    deploymentStatus &&
+                      "border-green-500 text-green-500 relative"
+                  )}
+                >
+                  <Rocket className="w-4 h-4" />
+                  {deploymentStatus && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  )}
+                  <span>{deploymentStatus ? "Deployed" : "Deploy"}</span>
+                </Button>
+              )}
             </div>
 
             {/* Execution log appears directly under the buttons */}
@@ -317,6 +360,13 @@ function FlowEditor() {
         onOpenChange={setSaveAsDialogOpen}
         mode="saveAs"
       />
+      {currentCanvasId && (
+        <DeployDialog
+          open={deployDialogOpen}
+          onOpenChange={setDeployDialogOpen}
+          canvasId={currentCanvasId}
+        />
+      )}
     </div>
   );
 }

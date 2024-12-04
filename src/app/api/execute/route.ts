@@ -1,10 +1,24 @@
 import { createServersideClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { v4 as uuidv4 } from "uuid";
 import { Node, Edge } from "reactflow";
 import { ExecutionStep } from "@/components/ExecutionLog";
 import { getNodeByType } from "@/nodes";
 import { InputType } from "@/types/nodes";
+
+// Create a service role client for deployment executions
+const serviceClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
 
 // Build execution graph
 function buildExecutionGraph(nodes: Node[], edges: Edge[]) {
@@ -184,24 +198,49 @@ async function executeNode(
 }
 
 export async function POST(request: Request) {
-  const supabase = createServersideClient();
+  const headersList = headers();
+  const isDeploymentExecution =
+    headersList.get("x-deployment-execution") === "true";
+
+  // Use appropriate Supabase client based on context
+  const supabase = isDeploymentExecution
+    ? serviceClient
+    : createServersideClient();
   const encoder = new TextEncoder();
 
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    // Read request body once
+    const requestBody = await request.json();
+    let userId: string;
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Handle auth differently for deployments vs direct executions
+    if (isDeploymentExecution) {
+      const { userId: deploymentUserId } = requestBody;
+      userId = deploymentUserId;
+
+      if (!userId) {
+        return NextResponse.json(
+          { error: "User ID required for deployment execution" },
+          { status: 400 }
+        );
+      }
+    } else {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      userId = user.id;
     }
 
     // Fetch user's credentials
     const { data: credentials, error: credError } = await supabase
       .from("credentials")
       .select("*")
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (credError) {
       console.error("Error fetching credentials:", credError);
@@ -215,13 +254,12 @@ export async function POST(request: Request) {
     }, {} as Record<string, string>);
 
     // Set credentials in process.env for this request
-    // This will override env variables only if the user has set them
     Object.entries(credentialsMap).forEach(([key, value]) => {
       console.log("adding", key, value);
       process.env[key] = value as string;
     });
 
-    const { nodes, edges, executionSteps } = await request.json();
+    const { nodes, edges, executionSteps } = requestBody;
 
     if (!Array.isArray(nodes) || !Array.isArray(edges)) {
       throw new Error("Invalid request body structure");

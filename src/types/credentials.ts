@@ -13,6 +13,7 @@ export enum APIKeyType {
   HUGGINGFACE = "HUGGINGFACE_API_KEY",
   COHERE = "COHERE_API_KEY",
   META = "OLLAMA_URL",
+  API_KEY = "API_KEY",
 }
 
 export const API_KEY_LABELS: Record<APIKeyType, string> = {
@@ -23,4 +24,5 @@ export const API_KEY_LABELS: Record<APIKeyType, string> = {
   [APIKeyType.HUGGINGFACE]: "HuggingFace API Key",
   [APIKeyType.COHERE]: "Cohere API Key",
   [APIKeyType.META]: "OLLAMA Url",
+  [APIKeyType.API_KEY]: "API Key for Deployments",
 };
