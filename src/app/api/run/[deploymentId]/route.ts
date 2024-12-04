@@ -22,11 +22,29 @@ export async function POST(
   const headersList = headers();
   const apiKey = headersList.get("x-api-key");
 
-  if (!apiKey) {
-    return NextResponse.json({ error: "API key required" }, { status: 401 });
+  // Get deployment and canvas
+  const { data: deployment, error: deploymentError } = await supabase
+    .from("deployments")
+    .select(
+      `
+      *,
+      canvas:canvases (*)
+    `
+    )
+    .eq("id", params.deploymentId)
+    .single();
+
+  if (deploymentError || !deployment) {
+    return NextResponse.json(
+      { error: "Deployment not found" },
+      { status: 404 }
+    );
   }
 
-  try {
+  let credentialsMap = {};
+
+  // If API key is provided, try to get user credentials
+  if (apiKey) {
     // Verify API key and get user
     const { data: keyData, error: keyError } = await supabase
       .from("api_keys")
@@ -38,68 +56,37 @@ export async function POST(
       return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
     }
 
-    // Get deployment and canvas
-    const { data: deployment, error: deploymentError } = await supabase
-      .from("deployments")
-      .select(
-        `
-        *,
-        canvas:canvases (*)
-      `
-      )
-      .eq("id", params.deploymentId)
-      .eq("user_id", keyData.user_id)
-      .single();
-
-    if (deploymentError || !deployment) {
-      return NextResponse.json(
-        { error: "Deployment not found" },
-        { status: 404 }
-      );
-    }
-
     // Get user's credentials
-    const { data: credentials, error: credError } = await supabase
+    const { data: credentials } = await supabase
       .from("credentials")
       .select("*")
       .eq("user_id", keyData.user_id);
 
-    if (credError) {
-      return NextResponse.json(
-        { error: "Failed to fetch credentials" },
-        { status: 500 }
-      );
+    if (credentials) {
+      // Convert credentials array to map
+      credentialsMap = credentials.reduce((acc, cred) => {
+        acc[cred.key] = cred.value;
+        return acc;
+      }, {} as Record<string, string>);
+
+      // Update last_used timestamp for API key
+      await supabase
+        .from("api_keys")
+        .update({ last_used: new Date().toISOString() })
+        .eq("key", apiKey);
     }
-
-    // Convert credentials array to map
-    const credentialsMap = credentials.reduce((acc, cred) => {
-      acc[cred.key] = cred.value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    // Update last_used timestamp for API key
-    await supabase
-      .from("api_keys")
-      .update({ last_used: new Date().toISOString() })
-      .eq("key", apiKey);
-
-    // Execute the flow
-    const result = await executeFlowApi(
-      deployment.canvas.data.nodes,
-      deployment.canvas.data.edges,
-      credentialsMap
-    );
-
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
-
-    return NextResponse.json({ output: result.output });
-  } catch (error: any) {
-    console.error("Error executing flow:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
   }
+
+  // Execute the flow
+  const result = await executeFlowApi(
+    deployment.canvas.data.nodes,
+    deployment.canvas.data.edges,
+    credentialsMap
+  );
+
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
+  }
+
+  return NextResponse.json({ output: result.output });
 }
