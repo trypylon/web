@@ -17,6 +17,7 @@ export default function CredentialsPage() {
     [APIKeyType.HUGGINGFACE]: "",
     [APIKeyType.COHERE]: "",
     [APIKeyType.META]: "",
+    [APIKeyType.API_KEY]: "",
   });
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
