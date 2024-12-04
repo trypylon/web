@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/select";
 import { useFlowStore } from "@/store/flowStore";
 import { registeredNodes } from "@/nodes";
-import { InputType } from "@/types/nodes";
+import { InputType, NodeParameter } from "@/types/nodes";
 import { Input } from "@/components/ui/input";
 import { NodeParameterInput } from "@/components/node/NodeParameter";
+import { Textarea } from "./ui/textarea";
 
 interface CustomNodeProps {
   id: string;
@@ -133,6 +134,13 @@ export function CustomNode({
     }
   };
 
+  // Add this function to handle textarea auto-resize
+  const handleTextAreaResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const textarea = e.target;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
+
   // Render an input field with its handle
   const renderInput = (inputType: InputType, label: string) => {
     const isConnected = getInputConnection(inputType);
@@ -153,16 +161,19 @@ export function CustomNode({
             {label}
           </div>
           {inputType === InputType.PROMPT && !isConnected ? (
-            <textarea
+            <Textarea
               value={data.parameters?.prompt || ""}
               onChange={(e) => {
-                e.preventDefault();
                 e.stopPropagation();
                 handleParameterChange("prompt", e.target.value);
+                handleTextAreaResize(e);
               }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
               placeholder="Enter prompt..."
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              rows={3}
+              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none nodrag"
             />
           ) : (
             <div
@@ -171,6 +182,8 @@ export function CustomNode({
                   ? "text-gray-500 border border-gray-200"
                   : "text-gray-400 border border-dashed border-gray-300"
               } bg-gray-50 dark:bg-gray-900 dark:border-gray-700 rounded-md`}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               {isConnected
                 ? "Connected"
@@ -181,6 +194,38 @@ export function CustomNode({
       </div>
     );
   };
+
+  // Update the parameter input rendering
+  const renderParameter = (param: NodeParameter) => (
+    <div key={param.name} className="space-y-1">
+      {param.type === "string" ? (
+        <div className="space-y-2">
+          <label className="text-sm text-gray-700 dark:text-gray-300">
+            {param.label}
+          </label>
+          <Input
+            name={param.name}
+            value={data.parameters?.[param.name] || ""}
+            onChange={(e) => {
+              e.stopPropagation();
+              handleParameterInputChange(e);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="nodrag"
+          />
+        </div>
+      ) : (
+        <NodeParameterInput
+          parameter={param}
+          value={data.parameters?.[param.name]}
+          onChange={(value) => handleParameterChange(param.name, value)}
+        />
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -310,33 +355,7 @@ export function CustomNode({
             </h3>
             {nodeSchema.parameters
               .filter((p) => !["model", "prompt"].includes(p.name))
-              .map((param) => (
-                <div key={param.name} className="space-y-1">
-                  {param.type === "string" ? (
-                    <div className="space-y-2">
-                      <label className="text-sm text-gray-700 dark:text-gray-300">
-                        {param.label}
-                      </label>
-                      <Input
-                        name={param.name}
-                        value={data.parameters?.[param.name] || ""}
-                        onChange={handleParameterInputChange}
-                        className="nodrag"
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  ) : (
-                    <NodeParameterInput
-                      parameter={param}
-                      value={data.parameters?.[param.name]}
-                      onChange={(value) =>
-                        handleParameterChange(param.name, value)
-                      }
-                    />
-                  )}
-                </div>
-              ))}
+              .map(renderParameter)}
           </div>
         )}
 

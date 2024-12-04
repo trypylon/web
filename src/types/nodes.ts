@@ -39,8 +39,7 @@ export interface NodeParameter {
     | "boolean"
     | "select"
     | "json"
-    | "credential"
-    | "asyncSelect";
+    | "credential";
   description?: string;
   default?: any;
   optional?: boolean;

@@ -16,7 +16,7 @@ export const PineconeVectorStoreNode: BaseNode = {
     {
       name: "indexName",
       label: "Index Name",
-      type: "asyncSelect",
+      type: "string",
       description: "Select your Pinecone index",
       validation: z.string().min(1),
     },

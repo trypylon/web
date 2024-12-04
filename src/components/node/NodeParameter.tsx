@@ -20,6 +20,46 @@ export function NodeParameterInput({
   value,
   onChange,
 }: NodeParameterProps) {
+  // Add a ref to track if we should update
+  const shouldUpdate = React.useRef(true);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+
+    if (parameter.type === "number" || parameter.type === "float") {
+      // Allow empty string or valid numbers
+      if (e.target.value === "" || !isNaN(parseFloat(e.target.value))) {
+        shouldUpdate.current = true;
+        const val = e.target.value === "" ? "" : parseFloat(e.target.value);
+        onChange(val);
+      } else {
+        shouldUpdate.current = false;
+      }
+    } else {
+      onChange(e.target.value);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+
+    if (
+      (parameter.type === "number" || parameter.type === "float") &&
+      shouldUpdate.current
+    ) {
+      const val = parseFloat(
+        e.target.value || parameter.default?.toString() || "0"
+      );
+      if (!isNaN(val)) {
+        const clampedVal =
+          parameter.min !== undefined && parameter.max !== undefined
+            ? Math.min(Math.max(val, parameter.min), parameter.max)
+            : val;
+        onChange(clampedVal);
+      }
+    }
+  };
+
   // Common wrapper for all inputs with label and description
   const InputWrapper = ({ children }: { children: React.ReactNode }) => (
     <div className="space-y-1">
@@ -35,7 +75,17 @@ export function NodeParameterInput({
     </div>
   );
 
+  // Add common event handlers
+  const commonInputProps = {
+    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+    onMouseUp: (e: React.MouseEvent) => e.stopPropagation(),
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation(),
+    className: "w-full nodrag",
+  };
+
   switch (parameter.type) {
+    case "number":
     case "float":
       return (
         <InputWrapper>
@@ -43,25 +93,15 @@ export function NodeParameterInput({
             type="number"
             min={parameter.min}
             max={parameter.max}
-            step={parameter.step ?? 0.1}
+            step={
+              parameter.type === "float"
+                ? parameter.step ?? 0.1
+                : parameter.step ?? 1
+            }
             value={value ?? parameter.default ?? ""}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              if (!isNaN(val)) {
-                onChange(val);
-              }
-            }}
-            onBlur={(e) => {
-              const val = parseFloat(e.target.value);
-              if (!isNaN(val)) {
-                const clampedVal =
-                  parameter.min !== undefined && parameter.max !== undefined
-                    ? Math.min(Math.max(val, parameter.min), parameter.max)
-                    : val;
-                onChange(clampedVal);
-              }
-            }}
-            className="w-full"
+            onChange={handleChange}
+            onBlur={handleBlur}
+            {...commonInputProps}
           />
         </InputWrapper>
       );
@@ -71,16 +111,25 @@ export function NodeParameterInput({
         <InputWrapper>
           <Select
             value={value ?? parameter.default ?? ""}
-            onValueChange={onChange}
+            onValueChange={(newValue) => onChange(newValue)}
+            onOpenChange={(open) => {
+              if (open) {
+                event?.stopPropagation();
+              }
+            }}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger {...commonInputProps}>
               <SelectValue
                 placeholder={`Select ${parameter.label.toLowerCase()}`}
               />
             </SelectTrigger>
             <SelectContent>
               {parameter.options?.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
                   {option.label}
                 </SelectItem>
               ))}
@@ -89,48 +138,16 @@ export function NodeParameterInput({
         </InputWrapper>
       );
 
-    case "number":
-      return (
-        <InputWrapper>
-          <Input
-            type="number"
-            value={value ?? parameter.default ?? ""}
-            min={parameter.min}
-            max={parameter.max}
-            step={parameter.step ?? 1}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              if (!isNaN(val)) {
-                onChange(val);
-              }
-            }}
-            className="w-full"
-          />
-        </InputWrapper>
-      );
-
     case "string":
-      return (
-        <InputWrapper>
-          <Input
-            type="text"
-            value={value ?? parameter.default ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full"
-            placeholder={`Enter ${parameter.label.toLowerCase()}`}
-          />
-        </InputWrapper>
-      );
-
     default:
       return (
         <InputWrapper>
           <Input
             type="text"
             value={value ?? parameter.default ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full"
+            onChange={handleChange}
             placeholder={`Enter ${parameter.label.toLowerCase()}`}
+            {...commonInputProps}
           />
         </InputWrapper>
       );
