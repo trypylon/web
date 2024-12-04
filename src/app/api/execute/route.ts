@@ -255,7 +255,6 @@ export async function POST(request: Request) {
 
     // Set credentials in process.env for this request
     Object.entries(credentialsMap).forEach(([key, value]) => {
-      console.log("adding", key, value);
       process.env[key] = value as string;
     });
 

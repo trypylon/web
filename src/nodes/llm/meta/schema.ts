@@ -6,10 +6,18 @@ import {
   NodeData,
   NodeInitOptions,
   InputType,
+  DebugLog,
   NodeRole,
 } from "@/types/nodes";
 import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { PromptTemplate } from "@langchain/core/prompts";
+import { handleVectorStore } from "@/lib/llm";
+import { BaseLanguageModel } from "@langchain/core/language_models/base";
+import { createDebugLog } from "@/lib/debug";
+
+interface ExtendedNodeData extends NodeData {
+  _debugLogs?: DebugLog[];
+}
 
 export const MetaNode: BaseNode = {
   id: "meta",
@@ -26,14 +34,14 @@ export const MetaNode: BaseNode = {
       label: "Model",
       type: "select",
       options: [
-        { label: "Llama 2 70B", value: "llama2:70b" },
-        { label: "Llama 2 13B", value: "llama2:13b" },
-        { label: "Llama 2 7B", value: "llama2:7b" },
-        { label: "CodeLlama 34B", value: "codellama:34b" },
-        { label: "CodeLlama 13B", value: "codellama:13b" },
-        { label: "CodeLlama 7B", value: "codellama:7b" },
+        { label: "Llama 2 70B", value: "llama2:70b-chat" },
+        { label: "Llama 2 13B", value: "llama2:13b-chat" },
+        { label: "Llama 2 7B", value: "llama2:7b-chat" },
+        { label: "CodeLlama 34B", value: "codellama:34b-instruct" },
+        { label: "CodeLlama 13B", value: "codellama:13b-instruct" },
+        { label: "CodeLlama 7B", value: "codellama:7b-instruct" },
       ],
-      default: "llama2:7b",
+      default: "llama2:7b-chat",
       description: "The Meta model to use",
     },
     {
@@ -86,9 +94,10 @@ export const MetaNode: BaseNode = {
   ],
 
   async initialize(nodeData: NodeData, options: NodeInitOptions) {
-    const model = nodeData.parameters.model || "llama2:7b";
+    const model = nodeData.parameters.model || "llama2:7b-chat";
     const temperature = nodeData.parameters.temperature || 0.7;
     const baseUrl = options.credentials?.OLLAMA_URL || "http://localhost:11434";
+    console.log({ baseUrl });
 
     return new ChatOllama({
       model,
@@ -103,33 +112,52 @@ export const MetaNode: BaseNode = {
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) {
-    // Get the prompt from inputs or parameters
+    console.log("Meta execute called with inputs:", inputs);
+    // // Get the prompt from inputs or parameters
+    const updatedNodeData = { ...nodeData } as ExtendedNodeData;
+    const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
-    const context = inputs?.context || "";
-    const memory = inputs?.memory || "";
-    const vectorstore = inputs?.vectorstore || "";
 
+    debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
     // Build the complete prompt template based on available inputs
-    let template = "{prompt}";
-    const templateVars: Record<string, string> = { prompt: promptText };
+    let template = "{input}";
+    const inputValues: Record<string, string> = {
+      input: promptText,
+    };
 
-    if (context) {
-      template = "Context:\n{context}\n\nPrompt: {prompt}";
-      templateVars.context = context;
+    if (inputs?.vectorstore) {
+      console.log("Processing vectorstore input");
+      const vectorStoreResponse = await handleVectorStore({
+        llm: instance as unknown as BaseLanguageModel<any, any>,
+        vectorStoreInput: inputs.vectorstore,
+        userPrompt: promptText,
+        debugLogs: [],
+      });
+
+      template = vectorStoreResponse.template;
+      Object.assign(inputValues, vectorStoreResponse.inputValues);
+      debugLogs.push(...vectorStoreResponse.debugLogs);
     }
 
-    if (memory) {
-      template = "Previous Conversation:\n{memory}\n\n" + template;
-      templateVars.memory = memory;
+    // Add context if available
+    if (inputs?.context) {
+      template = `Additional Context:\n{context}\n\n${template}`;
+      inputValues.context = inputs.context;
     }
 
-    if (vectorstore) {
-      template = "Retrieved Documents:\n{vectorstore}\n\n" + template;
-      templateVars.vectorstore = vectorstore;
+    // Add memory if available
+    if (inputs?.memory) {
+      template = `Conversation History:\n{memory}\n\n${template}`;
+      inputValues.memory = inputs.memory;
     }
 
     const promptTemplate = PromptTemplate.fromTemplate(template);
-    const formattedPrompt = await promptTemplate.format(templateVars);
+    const formattedPrompt = await promptTemplate.format(inputValues);
+
+    debugLogs.push(
+      createDebugLog("intermediate", "Final Formatted Prompt", formattedPrompt)
+    );
+
     const response = await instance.invoke(formattedPrompt);
 
     return response.content as string;
