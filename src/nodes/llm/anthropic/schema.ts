@@ -66,13 +66,14 @@ export const AnthropicNode: BaseNode = {
       required: false,
       description: "Additional context to be injected into the prompt",
     },
-    memory: {
-      required: false,
-      description: "Chat history or memory from previous interactions",
-    },
     vectorstore: {
       required: false,
       description: "Retrieved documents from a vector store for RAG",
+      isAdvanced: true,
+    },
+    memory: {
+      required: false,
+      description: "Chat history or memory from previous interactions",
     },
   },
   outputs: [

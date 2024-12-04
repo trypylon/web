@@ -85,13 +85,14 @@ export const OpenAINode: BaseNode = {
       required: false,
       description: "Additional context to be injected into the prompt",
     },
-    memory: {
-      required: false,
-      description: "Chat history or memory from previous interactions",
-    },
     vectorstore: {
       required: false,
       description: "Retrieved documents from a vector store for RAG",
+    },
+    memory: {
+      required: false,
+      description: "Chat history or memory from previous interactions",
+      isAdvanced: true,
     },
   },
   outputs: [

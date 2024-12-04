@@ -62,8 +62,10 @@ export interface NodeCredential {
 }
 
 export interface NodeInput {
-  type: InputType;
-  value?: string;
+  required: boolean;
+  description: string;
+  isAdvanced?: boolean;
+  label?: string;
 }
 
 interface BaseNodeCommon {
@@ -77,10 +79,7 @@ interface BaseNodeCommon {
   parameters: NodeParameter[];
   credentials?: NodeCredential[];
   inputs: {
-    [key in InputType]?: {
-      required: boolean;
-      description: string;
-    };
+    [key in InputType]?: NodeInput;
   };
   outputs: {
     type: string;

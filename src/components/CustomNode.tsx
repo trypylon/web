@@ -69,11 +69,18 @@ export function CustomNode({
     );
   };
 
+  // Separate inputs into basic and advanced
+  const basicInputs = Object.entries(nodeSchema.inputs).filter(
+    ([_, config]) => !config.isAdvanced
+  );
+  const advancedInputs = Object.entries(nodeSchema.inputs).filter(
+    ([_, config]) => config.isAdvanced
+  );
+
   // Check if any advanced inputs are connected
   const hasConnectedAdvancedInputs = () => {
-    return (
-      getInputConnection(InputType.MEMORY) ||
-      getInputConnection(InputType.VECTORSTORE)
+    return advancedInputs.some(([inputType]) =>
+      getInputConnection(inputType as InputType)
     );
   };
 
@@ -308,29 +315,22 @@ export function CustomNode({
           <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400">
             Inputs
           </h3>
-
-          {/* Prompt Input */}
-          {nodeSchema.inputs.prompt && renderInput(InputType.PROMPT, "Prompt")}
-
-          {/* Context Input */}
-          {nodeSchema.inputs.context &&
-            renderInput(InputType.CONTEXT, "Context")}
+          {basicInputs.map(([inputType, config]) =>
+            renderInput(inputType as InputType, config.label || inputType)
+          )}
         </div>
 
         {/* Advanced Inputs */}
-        {(nodeSchema.inputs.memory || nodeSchema.inputs.vectorstore) && (
+        {advancedInputs.length > 0 && (
           <div className="space-y-4">
-            {/* Show advanced inputs if they're connected or if advanced section is expanded */}
             {(hasConnectedAdvancedInputs() || showAdvanced) && (
               <>
-                {nodeSchema.inputs.memory &&
-                  renderInput(InputType.MEMORY, "Memory")}
-                {nodeSchema.inputs.vectorstore &&
-                  renderInput(InputType.VECTORSTORE, "Vector Store")}
+                {advancedInputs.map(([inputType, config]) =>
+                  renderInput(inputType as InputType, config.label || inputType)
+                )}
               </>
             )}
 
-            {/* Advanced toggle button */}
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="flex items-center space-x-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
