@@ -1,6 +1,7 @@
 import { BaseNode } from "@/types/nodes";
 import { OpenAINode } from "./llm/openai/schema";
 import { AnthropicNode } from "./llm/anthropic/schema";
+import { MetaNode } from "./llm/meta/schema";
 import { PineconeVectorStoreNode } from "./vectorstore/pinecone/schema";
 import { Bot } from "lucide-react"; // Default icon
 import { QdrantVectorStoreNode } from "./vectorstore/qdrant/schema";
@@ -9,6 +10,7 @@ import { QdrantVectorStoreNode } from "./vectorstore/qdrant/schema";
 export const registeredNodes: BaseNode[] = [
   OpenAINode,
   AnthropicNode,
+  MetaNode,
   PineconeVectorStoreNode,
   QdrantVectorStoreNode,
 ];
