@@ -83,7 +83,11 @@ export default function DeploymentPage({ params }: { params: { id: string } }) {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" onClick={() => router.back()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/deployments")}
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>

@@ -90,15 +90,27 @@ export default function DeploymentsPage() {
                       {formatDistanceToNow(new Date(deployment.created_at))} ago
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyEndpoint(deployment.id)}
-                    className="space-x-2"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Endpoint</span>
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyEndpoint(deployment.id)}
+                      className="space-x-2"
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Endpoint</span>
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() =>
+                        router.push(`/deployments/${deployment.id}`)
+                      }
+                      className="space-x-2"
+                    >
+                      <span>Manage</span>
+                    </Button>
+                  </div>
                 </div>
                 <div className="text-sm bg-gray-50 dark:bg-gray-900 p-2 rounded">
                   <code>POST /api/run/{deployment.id}</code>
