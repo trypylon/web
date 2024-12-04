@@ -184,42 +184,31 @@ async function executeNode(
 }
 
 export async function POST(request: Request) {
-  const supabase = createServersideClient();
   const encoder = new TextEncoder();
+  let credentialsMap: Record<string, string> = {};
 
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const supabase = createServersideClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (user) {
+      // Only fetch and set credentials if there's a logged in user
+      const { data: credentials, error: credError } = await supabase
+        .from("credentials")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (credError) {
+        console.error("Error fetching credentials:", credError);
+        throw new Error("Failed to fetch credentials");
+      }
+
+      // Convert credentials array to a map
+      credentialsMap = credentials.reduce((acc, cred) => {
+        acc[cred.key] = cred.value;
+        return acc;
+      }, {} as Record<string, string>);
     }
-
-    // Fetch user's credentials
-    const { data: credentials, error: credError } = await supabase
-      .from("credentials")
-      .select("*")
-      .eq("user_id", user.id);
-
-    if (credError) {
-      console.error("Error fetching credentials:", credError);
-      throw new Error("Failed to fetch credentials");
-    }
-
-    // Convert credentials array to a map for easy access
-    const credentialsMap = credentials.reduce((acc, cred) => {
-      acc[cred.key] = cred.value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    // Set credentials in process.env for this request
-    // This will override env variables only if the user has set them
-    Object.entries(credentialsMap).forEach(([key, value]) => {
-      console.log("adding", key, value);
-      process.env[key] = value as string;
-    });
 
     const { nodes, edges, executionSteps } = await request.json();
 
