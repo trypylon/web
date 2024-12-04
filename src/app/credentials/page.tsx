@@ -16,6 +16,7 @@ export default function CredentialsPage() {
     [APIKeyType.QDRANT]: "",
     [APIKeyType.HUGGINGFACE]: "",
     [APIKeyType.COHERE]: "",
+    [APIKeyType.META]: "",
   });
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
   const { toast } = useToast();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useFlowStore } from "@/store/flowStore";
@@ -18,7 +18,8 @@ const Flow = dynamic(
     ),
   }
 );
-export default function Home() {
+
+function HomeContent() {
   const searchParams = useSearchParams();
   const loadCanvas = useFlowStore((state) => state.loadCanvas);
 
@@ -30,8 +31,16 @@ export default function Home() {
   }, [searchParams, loadCanvas]);
 
   return (
-    <main className="h-screen  ml-16">
+    <main className="h-screen ml-16">
       <Flow />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }
