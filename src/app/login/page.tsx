@@ -1,9 +1,24 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import LogoButton from "@/components/ui/logo-button";
 import { AuthFormComponent } from "@/components/ui/auth-form";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { useFlowStore } from "@/store/flowStore";
 
 export default function AuthenticationPage() {
+  const setNodes = useFlowStore((state) => state.setNodes);
+  const setEdges = useFlowStore((state) => state.setEdges);
+
+  useEffect(() => {
+    // Check for temp flow after successful auth
+    const tempFlow = localStorage.getItem("tempFlow");
+    if (tempFlow) {
+      const { nodes, edges } = JSON.parse(tempFlow);
+      setNodes(nodes);
+      setEdges(edges);
+      localStorage.removeItem("tempFlow"); // Clean up
+    }
+  }, [setNodes, setEdges]);
+
   return (
     <div>
       <div

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -21,11 +21,18 @@ import {
   StopCircle,
   Trash2,
   XCircle,
+  Save,
+  FolderOpen,
 } from "lucide-react";
 import { ExecutionLog } from "./ExecutionLog";
 import { TemplateSelector } from "./TemplateSelector";
-import { NodeRole, isExecutorNode } from "@/types/nodes";
+import { isExecutorNode } from "@/types/nodes";
 import { findNodeSchema } from "@/store/flowStore";
+import { SaveCanvasDialog } from "./SaveCanvasDialog";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { createNewBrowserClient } from "@/lib/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 const nodeTypes = {
   custom: CustomNode,
@@ -44,9 +51,44 @@ const edgeOptions = {
 };
 
 function FlowEditor() {
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const [user, setUser] = useState<null | User>(null);
+  const supabase = createNewBrowserClient();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data?.user) {
+        setUser(data?.user);
+      }
+    };
+    void checkUser();
+  }, [supabase.auth]);
+
+  const { currentCanvasId, currentCanvasName, saveCanvas, nodes, edges } =
+    useFlowStore();
+
+  // Function to handle quick save of existing canvas
+  const handleQuickSave = async () => {
+    if (!currentCanvasId || !currentCanvasName) return;
+    try {
+      await saveCanvas(currentCanvasName, undefined, false);
+      toast({
+        title: "Canvas Updated",
+        description: "Your changes have been saved",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const {
-    nodes,
-    edges,
     onNodesChange,
     onEdgesChange,
     onConnect,
@@ -119,6 +161,13 @@ function FlowEditor() {
     [addNode]
   );
 
+  // Add this function back
+  const handleSaveClick = () => {
+    // Store current flow state in localStorage before redirecting
+    localStorage.setItem("tempFlow", JSON.stringify({ nodes, edges }));
+    router.push("/login");
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
       <Sidebar />
@@ -146,6 +195,63 @@ function FlowEditor() {
           >
             <div className="flex space-x-2">
               <TemplateSelector />
+
+              {user ? (
+                // User is logged in
+                currentCanvasId ? (
+                  // Editing an existing canvas
+                  <>
+                    <Button
+                      onClick={handleQuickSave}
+                      variant="outline"
+                      className="space-x-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save</span>
+                    </Button>
+                    <Button
+                      onClick={() => setSaveAsDialogOpen(true)}
+                      variant="outline"
+                      className="space-x-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save as New</span>
+                    </Button>
+                  </>
+                ) : (
+                  // Creating a new canvas
+                  <Button
+                    onClick={() => setSaveAsDialogOpen(true)}
+                    variant="outline"
+                    className="space-x-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Save as New</span>
+                  </Button>
+                )
+              ) : (
+                // User is not logged in
+                <Button
+                  onClick={handleSaveClick}
+                  variant="outline"
+                  className="space-x-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Login to Save</span>
+                </Button>
+              )}
+
+              {/* Only show My Canvases if user is logged in */}
+              {user && (
+                <Button
+                  onClick={() => router.push("/canvases")}
+                  variant="outline"
+                  className="space-x-2"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  <span>My Canvases</span>
+                </Button>
+              )}
 
               {executionSteps.length > 0 && (
                 <Button
@@ -206,6 +312,11 @@ function FlowEditor() {
           )}
         </ReactFlow>
       </div>
+      <SaveCanvasDialog
+        open={saveAsDialogOpen}
+        onOpenChange={setSaveAsDialogOpen}
+        mode="saveAs"
+      />
     </div>
   );
 }

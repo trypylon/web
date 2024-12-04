@@ -1,33 +1,24 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { redirect } from 'next/navigation'
-import { createServersideClient } from '@/lib/supabase/server'
-import { AuthWrapper } from '@/components/ui/auth-wrapper'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage
-} from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { MessageSquarePlus, LogOut } from 'lucide-react'
-import Link from 'next/link'
+import { redirect } from "next/navigation";
+import { createServersideClient } from "@/lib/supabase/server";
+import { AuthWrapper } from "@/components/ui/auth-wrapper";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { MessageSquarePlus, LogOut } from "lucide-react";
+import Link from "next/link";
 
-export default async function PrivatePage() {
-  const supabase = createServersideClient()
+export default async function Profile() {
+  const supabase = createServersideClient();
 
-  const { data, error } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getUser();
   if (error ?? !data?.user) {
-    redirect('/login')
+    redirect("/login");
   }
 
-  const { user } = data
-  const { email, user_metadata } = user
-  const { full_name, avatar_url } = user_metadata
+  const { user } = data;
+  const { email, user_metadata } = user;
+  const { full_name, avatar_url } = user_metadata;
 
   return (
     <AuthWrapper>
@@ -36,26 +27,21 @@ export default async function PrivatePage() {
           <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="w-16 h-16">
               <AvatarImage
-                src={
-                  avatar_url ||
-                  '/placeholder.svg?height=64&width=64'
-                }
+                src={avatar_url || "/placeholder.svg?height=64&width=64"}
                 alt="Profile picture"
               />
               <AvatarFallback>
                 {full_name
                   ? full_name
-                      .split(' ')
+                      .split(" ")
                       .map((n: any[]) => n[0])
-                      .join('')
+                      .join("")
                       .toUpperCase()
                   : email?.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-2xl">
-                Profile
-              </CardTitle>
+              <CardTitle className="text-2xl">Profile</CardTitle>
               <p className="text-sm text-muted-foreground">
                 Your personal information
               </p>
@@ -67,9 +53,7 @@ export default async function PrivatePage() {
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Name
                 </h3>
-                <p className="text-lg">
-                  {full_name || 'Not set'}
-                </p>
+                <p className="text-lg">{full_name || "Not set"}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">
@@ -82,17 +66,11 @@ export default async function PrivatePage() {
                   Account Created
                 </h3>
                 <p className="text-lg">
-                  {new Date(
-                    user.created_at
-                  ).toLocaleDateString()}
+                  {new Date(user.created_at).toLocaleDateString()}
                 </p>
               </div>
               <div className="pt-4 space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  asChild
-                >
+                <Button variant="outline" className="w-full" asChild>
                   <Link
                     href="https://discord.gg/V6KwQ2BCst"
                     target="_blank"
@@ -102,15 +80,8 @@ export default async function PrivatePage() {
                     Submit Feedback or Feature Request
                   </Link>
                 </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  asChild
-                >
-                  <Link
-                    href="/auth/signout"
-                    prefetch={false}
-                  >
+                <Button variant="destructive" className="w-full" asChild>
+                  <Link href="/auth/signout" prefetch={false}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </Link>
@@ -121,5 +92,5 @@ export default async function PrivatePage() {
         </Card>
       </div>
     </AuthWrapper>
-  )
+  );
 }

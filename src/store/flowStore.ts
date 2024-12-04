@@ -40,6 +40,15 @@ interface FlowState {
   clearExecutionLog: () => void;
   clearError: () => void;
   loadTemplate: (template: FlowTemplate) => void;
+  currentCanvasId: string | null;
+  currentCanvasName: string;
+  saveCanvas: (
+    name: string,
+    description?: string,
+    saveAsNew?: boolean
+  ) => Promise<void>;
+  loadCanvas: (canvasId: string) => Promise<void>;
+  clearCanvasState: () => void;
 }
 
 export const useFlowStore = create<FlowState>((set, get) => ({
@@ -49,6 +58,8 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   executionSteps: [],
   error: null,
   abortController: null,
+  currentCanvasId: null,
+  currentCanvasName: "",
 
   onNodesChange: (changes) => {
     set({
@@ -154,6 +165,8 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       edges: template.edges,
       executionSteps: [],
       error: null,
+      currentCanvasId: null,
+      currentCanvasName: "",
     });
   },
 
@@ -247,5 +260,55 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         abortController: null,
       });
     }
+  },
+
+  saveCanvas: async (
+    name: string,
+    description?: string,
+    saveAsNew: boolean = false
+  ) => {
+    const { nodes, edges, currentCanvasId } = get();
+
+    const response = await fetch("/api/canvases", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: saveAsNew ? undefined : currentCanvasId,
+        name,
+        description,
+        data: { nodes, edges },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to save canvas");
+    }
+
+    const { id } = await response.json();
+    set({ currentCanvasId: id, currentCanvasName: name });
+  },
+
+  loadCanvas: async (canvasId: string) => {
+    const response = await fetch(`/api/canvases/${canvasId}`);
+
+    if (!response.ok) {
+      throw new Error("Failed to load canvas");
+    }
+
+    const { canvas } = await response.json();
+    set({
+      nodes: canvas.data.nodes,
+      edges: canvas.data.edges,
+      currentCanvasId: canvas.id,
+      currentCanvasName: canvas.name,
+    });
+  },
+
+  clearCanvasState: () => {
+    set({
+      currentCanvasId: null,
+      currentCanvasName: "",
+    });
   },
 }));

@@ -1,6 +1,10 @@
-import dynamic from "next/dynamic";
+"use client";
 
-// Dynamically import Flow component with SSR disabled
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useFlowStore } from "@/store/flowStore";
+
 const Flow = dynamic(
   () => import("@/components/Flow").then((mod) => mod.default),
   {
@@ -14,10 +18,19 @@ const Flow = dynamic(
     ),
   }
 );
-
 export default function Home() {
+  const searchParams = useSearchParams();
+  const loadCanvas = useFlowStore((state) => state.loadCanvas);
+
+  useEffect(() => {
+    const canvasId = searchParams.get("canvas");
+    if (canvasId) {
+      loadCanvas(canvasId).catch(console.error);
+    }
+  }, [searchParams, loadCanvas]);
+
   return (
-    <main className="h-screen ml-16">
+    <main className="h-screen  ml-16">
       <Flow />
     </main>
   );
