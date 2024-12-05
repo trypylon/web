@@ -73,12 +73,12 @@ export async function POST(request: Request) {
       throw new Error("Failed to check canvas count");
     }
 
-    if (count && count >= 5) {
-      return NextResponse.json(
-        { error: "Free users can only save up to 5 canvases" },
-        { status: 403 }
-      );
-    }
+    // if (count && count >= 5) {
+    //   return NextResponse.json(
+    //     { error: "Free users can only save up to 5 canvases" },
+    //     { status: 403 }
+    //   );
+    // }
 
     // Insert new canvas
     const { data: newCanvas, error } = await supabase

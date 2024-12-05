@@ -75,6 +75,7 @@ export function UnifiedInput({
     onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
     onMouseUp: (e: React.MouseEvent) => e.stopPropagation(),
     onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation(),
+    onWheel: (e: React.WheelEvent) => e.stopPropagation(),
   };
 
   // Handle numeric input changes
@@ -159,7 +160,8 @@ export function UnifiedInput({
                   handleTextAreaResize(e);
                 }}
                 placeholder="Enter prompt..."
-                className={`w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none nodrag`}
+                className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] overflow-y-auto resize-vertical nodrag !resize-y"
+                style={{ resize: "vertical" }}
                 {...commonProps}
               />
             ) : (

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthWrapper } from "@/components/ui/auth-wrapper";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 interface Canvas {
   id: string;
@@ -71,6 +71,18 @@ export default function CanvasesPage() {
                   Last updated{" "}
                   {formatDistanceToNow(new Date(canvas.updated_at))} ago
                 </p>
+                <form
+                  action={`/api/canvases/${canvas.id}/delete`}
+                  method="POST"
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </form>
               </div>
             ))}
           </div>
