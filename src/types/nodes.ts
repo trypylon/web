@@ -17,6 +17,14 @@ export enum InputType {
   VECTORSTORE = "vectorstore",
 }
 
+export enum OutputType {
+  TEXT = "text",
+  JSON = "json",
+  EMBEDDING = "embedding",
+  VECTORSTORE_CONFIG = "vectorstore_config",
+  MEMORY_CONFIG = "memory_config",
+}
+
 export enum NodeRole {
   EXECUTOR = "executor",
   CONFIG = "config",
@@ -39,6 +47,7 @@ export interface NodeParameter {
     | "boolean"
     | "select"
     | "json"
+    | "textarea"
     | "credential";
   description?: string;
   default?: any;
@@ -82,9 +91,11 @@ interface BaseNodeCommon {
     [key in InputType]?: NodeInput;
   };
   outputs: {
-    type: string;
-    schema: z.ZodType<any>;
-  }[];
+    [key in OutputType]?: {
+      description: string;
+      schema: z.ZodType<any>;
+    };
+  };
   preserveState?: boolean;
   initialize: (nodeData: NodeData, options: NodeInitOptions) => Promise<any>;
   cleanup?: (nodeInstance: any) => Promise<void>;

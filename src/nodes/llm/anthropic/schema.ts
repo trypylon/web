@@ -7,6 +7,7 @@ import {
   NodeInitOptions,
   InputType,
   NodeRole,
+  OutputType,
 } from "@/types/nodes";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -42,13 +43,6 @@ export const AnthropicNode: BaseNode = {
       description: "Controls randomness (0-1)",
       validation: z.number().min(0).max(1),
     },
-    {
-      name: "prompt",
-      label: "System Prompt",
-      type: "string",
-      description: "The system prompt that guides the model behavior",
-      validation: z.string().min(1),
-    },
   ],
   credentials: [
     {
@@ -76,12 +70,12 @@ export const AnthropicNode: BaseNode = {
       description: "Chat history or memory from previous interactions",
     },
   },
-  outputs: [
-    {
-      type: "text",
+  outputs: {
+    [OutputType.TEXT]: {
+      description: "The generated text response from the model",
       schema: z.string(),
     },
-  ],
+  },
 
   async initialize(nodeData: NodeData, options: NodeInitOptions) {
     const model = nodeData.parameters.model || "claude-3-5-sonnet-latest";

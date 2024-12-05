@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { Database } from "lucide-react";
-import { BaseNode, NodeCategory, NodeData, NodeRole } from "@/types/nodes";
+import {
+  BaseNode,
+  NodeCategory,
+  NodeData,
+  NodeRole,
+  OutputType,
+} from "@/types/nodes";
 import { Pinecone } from "@pinecone-database/pinecone";
 
 export const PineconeVectorStoreNode: BaseNode = {
@@ -56,9 +62,9 @@ export const PineconeVectorStoreNode: BaseNode = {
     },
   ],
   inputs: {},
-  outputs: [
-    {
-      type: "vectorstore",
+  outputs: {
+    [OutputType.VECTORSTORE_CONFIG]: {
+      description: "Pinecone vector store configuration",
       schema: z.object({
         indexName: z.string(),
         namespace: z.string().optional(),
@@ -66,7 +72,7 @@ export const PineconeVectorStoreNode: BaseNode = {
         dimensions: z.number(),
       }),
     },
-  ],
+  },
 
   async initialize(nodeData: NodeData) {
     // Return the configuration with the type field

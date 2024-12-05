@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { Database } from "lucide-react";
-import { BaseNode, NodeCategory, NodeData, NodeRole } from "@/types/nodes";
+import {
+  BaseNode,
+  NodeCategory,
+  NodeData,
+  NodeRole,
+  OutputType,
+} from "@/types/nodes";
 
 export const QdrantVectorStoreNode: BaseNode = {
   id: "qdrant-vectorstore",
@@ -55,17 +61,17 @@ export const QdrantVectorStoreNode: BaseNode = {
     },
   ],
   inputs: {},
-  outputs: [
-    {
-      type: "vectorstore",
+  outputs: {
+    [OutputType.VECTORSTORE_CONFIG]: {
+      description: "Qdrant vector store configuration",
       schema: z.object({
         collectionName: z.string(),
-        url: z.string(),
+        url: z.string().url(),
         topK: z.number(),
         dimensions: z.number(),
       }),
     },
-  ],
+  },
 
   async initialize(nodeData: NodeData) {
     return {

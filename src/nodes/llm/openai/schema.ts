@@ -8,6 +8,7 @@ import {
   InputType,
   DebugLog,
   NodeRole,
+  OutputType,
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -55,13 +56,6 @@ export const OpenAINode: BaseNode = {
         "Controls randomness in the output (0 = deterministic, 1 = creative)",
       validation: z.number().min(0).max(1),
     },
-    {
-      name: "prompt",
-      label: "System Prompt",
-      type: "string",
-      description: "The system prompt that guides the model behavior",
-      validation: z.string().min(1),
-    },
   ],
   credentials: [
     {
@@ -95,12 +89,12 @@ export const OpenAINode: BaseNode = {
       isAdvanced: true,
     },
   },
-  outputs: [
-    {
-      type: "text",
+  outputs: {
+    [OutputType.TEXT]: {
+      description: "The generated text response from the model",
       schema: z.string(),
     },
-  ],
+  },
 
   async initialize(nodeData: NodeData, options: NodeInitOptions) {
     const model = nodeData.parameters.model || "gpt-4";

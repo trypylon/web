@@ -8,6 +8,7 @@ import {
   InputType,
   DebugLog,
   NodeRole,
+  OutputType,
 } from "@/types/nodes";
 import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -53,13 +54,6 @@ export const MetaNode: BaseNode = {
       description: "Controls randomness (0-1)",
       validation: z.number().min(0).max(1),
     },
-    {
-      name: "prompt",
-      label: "System Prompt",
-      type: "string",
-      description: "The system prompt that guides the model behavior",
-      validation: z.string().min(1),
-    },
   ],
   credentials: [
     {
@@ -86,12 +80,12 @@ export const MetaNode: BaseNode = {
       description: "Retrieved documents from a vector store for RAG",
     },
   },
-  outputs: [
-    {
-      type: "text",
+  outputs: {
+    [OutputType.TEXT]: {
+      description: "The generated text response from the model",
       schema: z.string(),
     },
-  ],
+  },
 
   async initialize(nodeData: NodeData, options: NodeInitOptions) {
     const model = nodeData.parameters.model || "llama2:7b-chat";
