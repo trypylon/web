@@ -107,13 +107,14 @@ export const MetaNode: BaseNode = {
     inputs?: Record<InputType, string>
   ) {
     console.log("Meta execute called with inputs:", inputs);
-    // // Get the prompt from inputs or parameters
+
     const updatedNodeData = { ...nodeData } as ExtendedNodeData;
     const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
 
     debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
-    // Build the complete prompt template based on available inputs
+
+    // Build template and variables based on available inputs
     let template = "{input}";
     const inputValues: Record<string, string> = {
       input: promptText,
@@ -135,8 +136,12 @@ export const MetaNode: BaseNode = {
 
     // Add context if available
     if (inputs?.context) {
+      const contextValue =
+        typeof inputs.context === "object"
+          ? JSON.stringify(inputs.context, null, 2)
+          : inputs.context;
       template = `Additional Context:\n{context}\n\n${template}`;
-      inputValues.context = inputs.context;
+      inputValues.context = contextValue;
     }
 
     // Add memory if available
@@ -145,6 +150,7 @@ export const MetaNode: BaseNode = {
       inputValues.memory = inputs.memory;
     }
 
+    // Create and format the prompt
     const promptTemplate = PromptTemplate.fromTemplate(template);
     const formattedPrompt = await promptTemplate.format(inputValues);
 
@@ -153,7 +159,14 @@ export const MetaNode: BaseNode = {
     );
 
     const response = await instance.invoke(formattedPrompt);
+    const content = response.content as string;
 
-    return response.content as string;
+    debugLogs.push(createDebugLog("output", "LLM Response", content));
+
+    // Update the nodeData with debug logs
+    updatedNodeData._debugLogs = debugLogs;
+    Object.assign(nodeData || {}, { _debugLogs: debugLogs });
+
+    return content;
   },
 };

@@ -6,11 +6,19 @@ import {
   NodeData,
   NodeInitOptions,
   InputType,
+  DebugLog,
   NodeRole,
   OutputType,
 } from "@/types/nodes";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { PromptTemplate } from "@langchain/core/prompts";
+import { handleVectorStore } from "@/lib/llm";
+import { BaseLanguageModel } from "@langchain/core/language_models/base";
+import { createDebugLog } from "@/lib/debug";
+
+interface ExtendedNodeData extends NodeData {
+  _debugLogs?: DebugLog[];
+}
 
 export const AnthropicNode: BaseNode = {
   id: "anthropic",
@@ -101,35 +109,67 @@ export const AnthropicNode: BaseNode = {
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) {
-    // Get the prompt from inputs or parameters
+    console.log("Anthropic execute called with inputs:", inputs);
+
+    const updatedNodeData = { ...nodeData } as ExtendedNodeData;
+    const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
-    const context = inputs?.context || "";
-    const memory = inputs?.memory || "";
-    const vectorstore = inputs?.vectorstore || "";
 
-    // Build the complete prompt template based on available inputs
-    let template = "{prompt}";
-    const templateVars: Record<string, string> = { prompt: promptText };
+    debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
 
-    if (context) {
-      template = "Context:\n{context}\n\nPrompt: {prompt}";
-      templateVars.context = context;
+    // Build template and variables based on available inputs
+    let template = "{input}";
+    const inputValues: Record<string, string> = {
+      input: promptText,
+    };
+
+    if (inputs?.vectorstore) {
+      console.log("Processing vectorstore input");
+      const vectorStoreResponse = await handleVectorStore({
+        llm: instance as unknown as BaseLanguageModel<any, any>,
+        vectorStoreInput: inputs.vectorstore,
+        userPrompt: promptText,
+        debugLogs: [],
+      });
+
+      template = vectorStoreResponse.template;
+      Object.assign(inputValues, vectorStoreResponse.inputValues);
+      debugLogs.push(...vectorStoreResponse.debugLogs);
     }
 
-    if (memory) {
-      template = "Previous Conversation:\n{memory}\n\n" + template;
-      templateVars.memory = memory;
+    // Add context if available
+    if (inputs?.context) {
+      const contextValue =
+        typeof inputs.context === "object"
+          ? JSON.stringify(inputs.context, null, 2)
+          : inputs.context;
+      template = `Additional Context:\n{context}\n\n${template}`;
+      inputValues.context = contextValue;
     }
 
-    if (vectorstore) {
-      template = "Retrieved Documents:\n{vectorstore}\n\n" + template;
-      templateVars.vectorstore = vectorstore;
+    // Add memory if available
+    if (inputs?.memory) {
+      template = `Conversation History:\n{memory}\n\n${template}`;
+      inputValues.memory = inputs.memory;
     }
 
+    // Create and format the prompt
     const promptTemplate = PromptTemplate.fromTemplate(template);
-    const formattedPrompt = await promptTemplate.format(templateVars);
-    const response = await instance.invoke(formattedPrompt);
+    const formattedPrompt = await promptTemplate.format(inputValues);
 
-    return response.content as string;
+    debugLogs.push(
+      createDebugLog("intermediate", "Final Formatted Prompt", formattedPrompt)
+    );
+
+    const response = await instance.invoke(formattedPrompt);
+    const content = response.content as string;
+
+    debugLogs.push(createDebugLog("output", "LLM Response", content));
+
+    // Update the nodeData with debug logs
+    updatedNodeData._debugLogs = debugLogs;
+    Object.assign(nodeData || {}, { _debugLogs: debugLogs });
+
+    return content;
   },
 };
