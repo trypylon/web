@@ -2,9 +2,8 @@ import { createServersideClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { Node, Edge } from "reactflow";
-import { ExecutionStep } from "@/components/ExecutionLog";
 import { getNodeByType } from "@/nodes";
-import { InputType } from "@/types/nodes";
+import { ExecutionStep, InputType } from "@/types/nodes";
 
 // Build execution graph
 function buildExecutionGraph(nodes: Node[], edges: Edge[]) {

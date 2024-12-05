@@ -36,6 +36,92 @@ function createTemplateIds(
 
 export const templates: FlowTemplate[] = [
   {
+    id: "random-identity",
+    name: "Random Identity Generator",
+    description:
+      "Generate a random person's identity with structured JSON output",
+    category: "Basic",
+    ...createTemplateIds(
+      [
+        {
+          id: "node-1",
+          type: "custom",
+          position: { x: 100, y: 200 },
+          data: {
+            type: "OpenAI",
+            label: "Identity Generator",
+            parameters: {
+              model: "gpt-4",
+              prompt:
+                "Generate a random person's identity. Be creative but realistic.",
+              useJsonOutput: true,
+              jsonSchema: {
+                name: "generate_identity",
+                description: "Generate a random person's identity",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    name: {
+                      type: "string",
+                      description: "The person's full name",
+                    },
+                    age: {
+                      type: "number",
+                      description: "The person's age (between 18-80)",
+                    },
+                    country: {
+                      type: "string",
+                      description: "The country where the person lives",
+                    },
+                    interests: {
+                      type: "array",
+                      items: {
+                        type: "string",
+                      },
+                      description:
+                        "List of the person's main interests and hobbies",
+                    },
+                    occupation: {
+                      type: "string",
+                      description: "The person's job or profession",
+                    },
+                    personality: {
+                      type: "object",
+                      properties: {
+                        traits: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                          },
+                          description: "List of personality traits",
+                        },
+                        mbti: {
+                          type: "string",
+                          description: "MBTI personality type",
+                        },
+                      },
+                      required: ["traits", "mbti"],
+                      description: "The person's personality profile",
+                    },
+                  },
+                  required: [
+                    "name",
+                    "age",
+                    "country",
+                    "interests",
+                    "occupation",
+                    "personality",
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ],
+      []
+    ),
+  },
+  {
     id: "philosophical-haiku",
     name: "Philosophical Haiku",
     description:

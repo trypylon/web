@@ -12,25 +12,12 @@ import {
   Loader2,
   MinimizeIcon,
   MaximizeIcon,
-  Code2,
   Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResizablePanel } from "@/components/ui/resizable";
-import { DebugLog } from "@/types/nodes";
-
-export interface ExecutionStep {
-  id: string;
-  nodeId: string;
-  nodeName: string;
-  status: "pending" | "running" | "completed" | "error";
-  startTime?: number;
-  endTime?: number;
-  result?: string;
-  error?: string;
-  order?: number;
-  debugLogs?: DebugLog[];
-}
+import { ExecutionStep } from "@/types/nodes";
+import Editor from "@monaco-editor/react";
 
 interface ExecutionLogProps {
   steps: ExecutionStep[];
@@ -40,6 +27,24 @@ function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const seconds = (ms / 1000).toFixed(1);
   return `${seconds}s`;
+}
+
+function isJson(str: any): boolean {
+  if (typeof str !== "string" && typeof str !== "object") return false;
+  if (typeof str === "object") return true;
+  try {
+    JSON.parse(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function formatValue(value: any): string {
+  if (typeof value === "object") {
+    return JSON.stringify(value, null, 2);
+  }
+  return value?.toString() || "";
 }
 
 function TimingDisplay({
@@ -54,16 +59,13 @@ function TimingDisplay({
   useEffect(() => {
     if (!startTime) return;
 
-    // For completed steps or steps with endTime, show final duration
     if (endTime) {
       setElapsed(endTime - startTime);
       return;
     }
 
-    // Calculate initial elapsed time
     setElapsed(Date.now() - startTime);
 
-    // For running steps, update elapsed time every 100ms
     const interval = setInterval(() => {
       setElapsed(Date.now() - startTime);
     }, 100);
@@ -71,10 +73,8 @@ function TimingDisplay({
     return () => clearInterval(interval);
   }, [startTime, endTime]);
 
-  // If no startTime, don't show anything
   if (!startTime) return null;
 
-  // For non-running steps without endTime, use current time as endTime
   if (!endTime && elapsed === 0) {
     setElapsed(Date.now() - startTime);
   }
@@ -93,27 +93,22 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
   const [totalTime, setTotalTime] = useState<number>(0);
   const [debugMode, setDebugMode] = useState(false);
 
-  // Sort steps to ensure top-level nodes appear first
   const sortedSteps = [...steps].sort((a, b) => {
-    // First, prioritize running or completed steps
     const aHasStarted = a.status === "running" || a.status === "completed";
     const bHasStarted = b.status === "running" || b.status === "completed";
 
     if (aHasStarted && !bHasStarted) return -1;
     if (!aHasStarted && bHasStarted) return 1;
 
-    // If both have started, sort by startTime
     if (aHasStarted && bHasStarted) {
       if (a.startTime && b.startTime) {
         return a.startTime - b.startTime;
       }
     }
 
-    // If neither has started or no startTime, maintain original order
     return steps.indexOf(a) - steps.indexOf(b);
   });
 
-  // Calculate and update total execution time
   useEffect(() => {
     const calculateTotalTime = () => {
       const time = sortedSteps.reduce((total, step) => {
@@ -123,7 +118,6 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
         return total;
       }, 0);
 
-      // Only update if there's a completed step and the time is different
       if (time > 0 && time !== totalTime) {
         setTotalTime(time);
       }
@@ -131,7 +125,6 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
 
     calculateTotalTime();
 
-    // If any step is still running, update periodically
     const hasRunningSteps = sortedSteps.some(
       (step) => step.status === "running"
     );
@@ -141,7 +134,6 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
     }
   }, [sortedSteps, totalTime]);
 
-  // Modified auto-expand logic to only force-open running steps
   useEffect(() => {
     sortedSteps.forEach((step) => {
       if (step.status === "running" && !openItems.includes(step.id)) {
@@ -150,7 +142,39 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
     });
   }, [sortedSteps]);
 
-  console.log(sortedSteps);
+  const renderContent = (value: any) => {
+    const isJsonOutput = isJson(value);
+
+    if (isJsonOutput) {
+      return (
+        <div className="border rounded-md overflow-hidden">
+          <Editor
+            height="200px"
+            defaultLanguage="json"
+            value={formatValue(value)}
+            theme="vs-dark"
+            options={{
+              readOnly: true,
+              minimap: { enabled: false },
+              fontSize: 12,
+              scrollBeyondLastLine: false,
+              wordWrap: "on",
+              domReadOnly: true,
+              contextmenu: false,
+              lineNumbers: "off",
+            }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <pre className="whitespace-pre-wrap break-words overflow-x-auto max-w-full">
+        {value}
+      </pre>
+    );
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -259,11 +283,7 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
                               {new Date(log.timestamp).toLocaleTimeString()}
                             </span>
                           </div>
-                          <pre className="whitespace-pre-wrap break-words overflow-x-auto max-w-full">
-                            {typeof log.value === "string"
-                              ? log.value
-                              : JSON.stringify(log.value, null, 2)}
-                          </pre>
+                          {renderContent(log.value)}
                         </div>
                       ))}
                     </div>
@@ -276,8 +296,8 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
                     </div>
                   )}
                   {step.status === "completed" && step.result && (
-                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words overflow-x-auto">
-                      {step.result}
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      {renderContent(step.result)}
                     </div>
                   )}
                   {step.status === "running" && (

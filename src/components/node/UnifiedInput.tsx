@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, memo } from "react";
 import { Handle, Position } from "reactflow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InputType, NodeParameter } from "@/types/nodes";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { JsonSchemaDialog } from "./JsonSchemaDialog";
+import { Button } from "@/components/ui/button";
+import { Code2 } from "lucide-react";
 
 interface UnifiedInputProps {
   // Common props
@@ -27,6 +32,30 @@ interface UnifiedInputProps {
   parameter?: NodeParameter;
 }
 
+interface InputWrapperProps {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+}
+
+// Memoize the InputWrapper to prevent unnecessary rerenders
+const InputWrapper = memo(
+  ({ label, description, children }: InputWrapperProps) => (
+    <>
+      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {label}
+      </label>
+      {children}
+      {description && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {description}
+        </p>
+      )}
+    </>
+  )
+);
+InputWrapper.displayName = "InputWrapper";
+
 export function UnifiedInput({
   label,
   value,
@@ -38,6 +67,7 @@ export function UnifiedInput({
   parameter,
 }: UnifiedInputProps) {
   const shouldUpdate = useRef(true);
+  const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
 
   // Common event handlers to stop propagation
   const commonProps = {
@@ -99,19 +129,11 @@ export function UnifiedInput({
     }
   };
 
-  // Wrapper component for consistent styling
-  const InputWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
-      {children}
-      {description && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {description}
-        </p>
-      )}
-    </div>
+  // Helper function to wrap content with InputWrapper
+  const withWrapper = (content: React.ReactNode) => (
+    <InputWrapper label={label} description={description}>
+      {content}
+    </InputWrapper>
   );
 
   // If this is a node input with a handle
@@ -128,12 +150,11 @@ export function UnifiedInput({
           isConnectable={isConnectable}
         />
         <div className="flex-1 ml-2">
-          <InputWrapper>
-            {inputType === InputType.PROMPT && !isConnected ? (
+          {withWrapper(
+            inputType === InputType.PROMPT && !isConnected ? (
               <Textarea
                 value={value || ""}
                 onChange={(e) => {
-                  e.stopPropagation();
                   onChange(e.target.value);
                   handleTextAreaResize(e);
                 }}
@@ -154,8 +175,8 @@ export function UnifiedInput({
                   ? "Connected"
                   : `No ${label.toLowerCase()} connected`}
               </div>
-            )}
-          </InputWrapper>
+            )
+          )}
         </div>
       </div>
     );
@@ -166,133 +187,140 @@ export function UnifiedInput({
     switch (parameter.type) {
       case "number":
       case "float":
-        return (
-          <InputWrapper>
-            <Input
-              type="number"
-              min={parameter.min}
-              max={parameter.max}
-              step={
-                parameter.type === "float"
-                  ? parameter.step ?? 0.1
-                  : parameter.step ?? 1
-              }
-              value={value ?? parameter.default ?? ""}
-              onChange={handleNumericChange}
-              onBlur={handleNumericBlur}
-              className="w-full nodrag"
+        return withWrapper(
+          <Input
+            type="number"
+            min={parameter.min}
+            max={parameter.max}
+            step={
+              parameter.type === "float"
+                ? parameter.step ?? 0.1
+                : parameter.step ?? 1
+            }
+            value={value ?? parameter.default ?? ""}
+            onChange={handleNumericChange}
+            onBlur={handleNumericBlur}
+            className="w-full nodrag"
+            {...commonProps}
+          />
+        );
+
+      case "boolean":
+        return withWrapper(
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={value ?? parameter.default ?? false}
+              onCheckedChange={onChange}
               {...commonProps}
             />
-          </InputWrapper>
+            <Label>{label}</Label>
+          </div>
         );
 
       case "select":
-        return (
-          <InputWrapper>
-            <Select
-              value={value ?? parameter.default ?? ""}
-              onValueChange={onChange}
-              onOpenChange={(open) => {
-                if (open) {
-                  event?.stopPropagation();
-                }
-              }}
-            >
-              <SelectTrigger className="w-full nodrag" {...commonProps}>
-                <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {parameter.options?.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </InputWrapper>
+        return withWrapper(
+          <Select
+            value={value ?? parameter.default ?? ""}
+            onValueChange={onChange}
+            onOpenChange={(open) => {
+              if (open) {
+                event?.stopPropagation();
+              }
+            }}
+          >
+            <SelectTrigger className="w-full nodrag" {...commonProps}>
+              <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {parameter.options?.map((option) => (
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
 
       case "json":
-        return (
-          <InputWrapper>
-            <Textarea
+        return withWrapper(
+          <>
+            <Button
+              variant="outline"
+              className="w-full flex items-center justify-between"
+              onClick={() => setJsonDialogOpen(true)}
+            >
+              <span>Edit JSON Schema</span>
+              <Code2 className="w-4 h-4" />
+            </Button>
+            <JsonSchemaDialog
+              open={jsonDialogOpen}
+              onOpenChange={setJsonDialogOpen}
               value={
-                typeof value === "string"
-                  ? value
-                  : JSON.stringify(value, null, 2)
-              }
-              onChange={(e) => {
-                e.stopPropagation();
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  onChange(parsed);
-                } catch {
-                  // If not valid JSON, store as string
-                  onChange(e.target.value);
+                value || {
+                  name: "generate_response",
+                  description: "Generate a structured response",
+                  properties: [],
                 }
-                handleTextAreaResize(e);
-              }}
-              placeholder="Enter JSON..."
-              className={`w-full font-mono text-sm min-h-[120px] nodrag`}
-              {...commonProps}
+              }
+              onChange={onChange}
             />
-          </InputWrapper>
+            {value && (
+              <div className="mt-2 text-xs text-gray-500">
+                Schema: {value.name} ({value.properties?.length || 0}{" "}
+                properties)
+              </div>
+            )}
+          </>
         );
 
       case "textarea":
-        return (
-          <InputWrapper>
-            <Textarea
-              value={value ?? parameter.default ?? ""}
-              onChange={(e) => {
-                e.stopPropagation();
-                onChange(e.target.value);
-                handleTextAreaResize(e);
-              }}
-              placeholder={`Enter ${label.toLowerCase()}`}
-              className={`w-full min-h-[80px] nodrag`}
-              {...commonProps}
-            />
-          </InputWrapper>
+        return withWrapper(
+          <Textarea
+            value={value ?? parameter.default ?? ""}
+            onChange={(e) => {
+              e.stopPropagation();
+              onChange(e.target.value);
+              handleTextAreaResize(e);
+            }}
+            placeholder={`Enter ${label.toLowerCase()}`}
+            className={`w-full min-h-[80px] nodrag`}
+            {...commonProps}
+          />
         );
 
       default:
-        return (
-          <InputWrapper>
-            <Input
-              type="text"
-              value={value ?? parameter.default ?? ""}
-              onChange={(e) => {
-                e.stopPropagation();
-                onChange(e.target.value);
-              }}
-              placeholder={`Enter ${label.toLowerCase()}`}
-              className="w-full nodrag"
-              {...commonProps}
-            />
-          </InputWrapper>
+        return withWrapper(
+          <Input
+            type="text"
+            value={value ?? parameter.default ?? ""}
+            onChange={(e) => {
+              e.stopPropagation();
+              onChange(e.target.value);
+            }}
+            placeholder={`Enter ${label.toLowerCase()}`}
+            className="w-full nodrag"
+            {...commonProps}
+          />
         );
     }
   }
 
   // Default text input
-  return (
-    <InputWrapper>
-      <Input
-        type="text"
-        value={value ?? ""}
-        onChange={(e) => {
-          e.stopPropagation();
-          onChange(e.target.value);
-        }}
-        placeholder={`Enter ${label.toLowerCase()}`}
-        className="w-full nodrag"
-        {...commonProps}
-      />
-    </InputWrapper>
+  return withWrapper(
+    <Input
+      type="text"
+      value={value ?? ""}
+      onChange={(e) => {
+        e.stopPropagation();
+        onChange(e.target.value);
+      }}
+      placeholder={`Enter ${label.toLowerCase()}`}
+      className="w-full nodrag"
+      {...commonProps}
+    />
   );
 }

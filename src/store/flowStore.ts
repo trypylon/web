@@ -13,10 +13,9 @@ import {
 } from "reactflow";
 import { v4 as uuidv4 } from "uuid";
 import { getBaseUrl } from "@/lib/utils";
-import { ExecutionStep } from "@/components/ExecutionLog";
 import { FlowTemplate } from "@/templates";
 import { getNodeByType } from "@/nodes";
-import { BaseNode } from "@/types/nodes";
+import { BaseNode, ExecutionStep } from "@/types/nodes";
 import { NodeRole } from "@/types/nodes";
 
 export function findNodeSchema(type: string): BaseNode | null {

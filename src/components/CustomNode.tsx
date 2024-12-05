@@ -144,38 +144,41 @@ export function CustomNode({
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Parameters
           </h3>
-          {nodeSchema.parameters.map((param) => (
-            <UnifiedInput
-              key={param.name}
-              parameter={param}
-              label={param.label}
-              value={data.parameters?.[param.name]}
-              onChange={(value) => handleParameterChange(param.name, value)}
-              description={param.description}
-            />
-          ))}
+          {nodeSchema.parameters
+            .filter(
+              (param) =>
+                param.name !== "useJsonOutput" && param.name !== "jsonSchema"
+            )
+            .map((param) => (
+              <UnifiedInput
+                key={param.name}
+                parameter={param}
+                label={param.label}
+                value={data.parameters?.[param.name]}
+                onChange={(value) => handleParameterChange(param.name, value)}
+                description={param.description}
+              />
+            ))}
         </div>
 
         {/* Basic Inputs */}
-        {basicInputs.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Inputs
-            </h3>
-            {basicInputs.map(([inputType, config]) => (
-              <UnifiedInput
-                key={inputType}
-                inputType={inputType as InputType}
-                label={config.label || inputType}
-                value={data.parameters?.[inputType]}
-                onChange={(value) => handleParameterChange(inputType, value)}
-                description={config.description}
-                isConnectable={isConnectable}
-                isConnected={!!getInputConnection(inputType as InputType)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Inputs
+          </h3>
+          {basicInputs.map(([inputType, config]) => (
+            <UnifiedInput
+              key={inputType}
+              inputType={inputType as InputType}
+              label={config.label || inputType}
+              value={data.parameters?.[inputType]}
+              onChange={(value) => handleParameterChange(inputType, value)}
+              description={config.description}
+              isConnectable={isConnectable}
+              isConnected={!!getInputConnection(inputType as InputType)}
+            />
+          ))}
+        </div>
 
         {/* Advanced Inputs */}
         {advancedInputs.length > 0 && (
@@ -213,20 +216,73 @@ export function CustomNode({
           </div>
         )}
 
-        {/* Outputs */}
-        {Object.entries(nodeSchema.outputs).length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Outputs
-            </h3>
-            {Object.entries(nodeSchema.outputs).map(([outputType, config]) => (
+        {/* Outputs Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Outputs
+          </h3>
+
+          {/* Output Format Toggle */}
+          {nodeSchema.parameters.find((p) => p.name === "useJsonOutput") && (
+            <div className="space-y-4">
+              <UnifiedInput
+                parameter={
+                  nodeSchema.parameters.find((p) => p.name === "useJsonOutput")!
+                }
+                label="Format Output as JSON"
+                value={data.parameters?.useJsonOutput}
+                onChange={(value) =>
+                  handleParameterChange("useJsonOutput", value)
+                }
+              />
+
+              {/* JSON Schema Editor (only shown when useJsonOutput is true) */}
+              {data.parameters?.useJsonOutput && (
+                <div className="space-y-2 border-l-2 border-blue-500 pl-3">
+                  <UnifiedInput
+                    parameter={
+                      nodeSchema.parameters.find(
+                        (p) => p.name === "jsonSchema"
+                      )!
+                    }
+                    label="JSON Schema"
+                    value={data.parameters?.jsonSchema}
+                    onChange={(value) =>
+                      handleParameterChange("jsonSchema", value)
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Output Handles */}
+          {Object.entries(nodeSchema.outputs).map(([outputType, config]) => {
+            // Only show JSON output if useJsonOutput is true
+            if (
+              outputType === OutputType.JSON &&
+              !data.parameters?.useJsonOutput
+            ) {
+              return null;
+            }
+            // Only show TEXT output if useJsonOutput is false
+            if (
+              outputType === OutputType.TEXT &&
+              data.parameters?.useJsonOutput
+            ) {
+              return null;
+            }
+
+            return (
               <div
                 key={outputType}
                 className="relative flex items-center justify-between group"
               >
                 <div className="flex-1">
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {outputType}
+                    {outputType === OutputType.JSON
+                      ? "JSON Output"
+                      : "Text Output"}
                   </div>
                   {config.description && (
                     <div className="text-xs text-gray-500 dark:text-gray-500">
@@ -242,9 +298,9 @@ export function CustomNode({
                   isConnectable={isConnectable}
                 />
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

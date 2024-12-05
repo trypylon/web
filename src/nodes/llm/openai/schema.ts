@@ -15,6 +15,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { handleVectorStore } from "@/lib/llm";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { createDebugLog } from "@/lib/debug";
+import { JsonOutputFunctionsParser } from "langchain/output_parsers";
 
 interface ExtendedNodeData extends NodeData {
   _debugLogs?: DebugLog[];
@@ -56,6 +57,44 @@ export const OpenAINode: BaseNode = {
         "Controls randomness in the output (0 = deterministic, 1 = creative)",
       validation: z.number().min(0).max(1),
     },
+    {
+      name: "useJsonOutput",
+      label: "Format Output as JSON",
+      type: "boolean",
+      default: false,
+      description: "Whether to format the output as a specific JSON structure",
+    },
+    {
+      name: "jsonSchema",
+      label: "JSON Schema",
+      type: "json",
+      description: "The JSON schema that defines the output structure",
+      conditions: [
+        {
+          field: "useJsonOutput",
+          value: true,
+        },
+      ],
+      default: {
+        name: "generate_response",
+        description: "Generate a structured response",
+        parameters: {
+          type: "object",
+          properties: {
+            summary: {
+              type: "string",
+              description: "A brief summary of the response",
+            },
+            points: {
+              type: "array",
+              items: { type: "string" },
+              description: "Key points from the response",
+            },
+          },
+          required: ["summary", "points"],
+        },
+      },
+    },
   ],
   credentials: [
     {
@@ -94,11 +133,17 @@ export const OpenAINode: BaseNode = {
       description: "The generated text response from the model",
       schema: z.string(),
     },
+    [OutputType.JSON]: {
+      description: "The structured JSON response from the model",
+      schema: z.any(), // Dynamic schema based on user input
+    },
   },
 
   async initialize(nodeData: NodeData, options: NodeInitOptions) {
     const model = nodeData.parameters.model || "gpt-4";
     const temperature = nodeData.parameters.temperature || 0.7;
+    const useJsonOutput = nodeData.parameters.useJsonOutput || false;
+    const jsonSchema = nodeData.parameters.jsonSchema;
 
     const llm = new ChatOpenAI({
       modelName: model,
@@ -109,11 +154,20 @@ export const OpenAINode: BaseNode = {
       maxConcurrency: 1,
     });
 
-    return { llm };
+    let outputParser = null;
+    if (useJsonOutput && jsonSchema) {
+      outputParser = new JsonOutputFunctionsParser();
+    }
+
+    return { llm, outputParser, jsonSchema };
   },
 
   async execute(
-    instance: { llm: ChatOpenAI },
+    instance: {
+      llm: ChatOpenAI;
+      outputParser: JsonOutputFunctionsParser | null;
+      jsonSchema: any;
+    },
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) {
@@ -166,14 +220,33 @@ export const OpenAINode: BaseNode = {
     );
 
     // Get response from LLM
-    const response = await instance.llm.invoke(formattedPrompt);
+    let response;
+    if (instance.outputParser && instance.jsonSchema) {
+      // Use function calling and JSON output parsing
+      const llmWithFunctions = instance.llm.bind({
+        functions: [instance.jsonSchema],
+        function_call: { name: instance.jsonSchema.name },
+      });
 
-    debugLogs.push(createDebugLog("output", "LLM Response", response.content));
+      response = await llmWithFunctions
+        .pipe(instance.outputParser)
+        .invoke(formattedPrompt);
+
+      debugLogs.push(
+        createDebugLog("output", "Formatted JSON Response", response)
+      );
+    } else {
+      // Regular text response
+      response = await instance.llm.invoke(formattedPrompt);
+      response = response.content;
+
+      debugLogs.push(createDebugLog("output", "LLM Response", response));
+    }
 
     // Update the nodeData with debug logs
     updatedNodeData._debugLogs = debugLogs;
     Object.assign(nodeData || {}, { _debugLogs: debugLogs });
 
-    return response.content as string;
+    return response;
   },
 };
