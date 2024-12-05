@@ -5,6 +5,8 @@ import { MetaNode } from "./llm/meta/schema";
 import { PineconeVectorStoreNode } from "./vectorstore/pinecone/schema";
 import { Bot } from "lucide-react"; // Default icon
 import { QdrantVectorStoreNode } from "./vectorstore/qdrant/schema";
+import { WebhookInputNode } from "./webhook/input/schema";
+// import { WebhookResponseNode } from "./webhook/response/schema";
 
 // Add nodes here to register them in the system
 export const registeredNodes: BaseNode[] = [
@@ -13,6 +15,8 @@ export const registeredNodes: BaseNode[] = [
   MetaNode,
   PineconeVectorStoreNode,
   QdrantVectorStoreNode,
+  WebhookInputNode,
+  // WebhookResponseNode,
 ];
 
 // Helper to get node by type

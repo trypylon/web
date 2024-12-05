@@ -1,6 +1,6 @@
 import { Node, Edge } from "reactflow";
 import { getNodeByType } from "@/nodes";
-import { InputType } from "@/types/nodes";
+import { InputType, ExecutionContext } from "@/types/nodes";
 
 interface ExecutionResult {
   success: boolean;
@@ -8,10 +8,16 @@ interface ExecutionResult {
   error?: string;
 }
 
+interface ExecuteFlowOptions {
+  source: "ui" | "api" | "webhook";
+  webhookData?: any;
+}
+
 export async function executeFlowApi(
   nodes: Node[],
   edges: Edge[],
-  credentials: Record<string, string>
+  credentials: Record<string, string>,
+  options: ExecuteFlowOptions = { source: "ui" }
 ): Promise<ExecutionResult> {
   try {
     // Set credentials
@@ -22,6 +28,12 @@ export async function executeFlowApi(
     // Build execution graph
     const { executionLevels, nodeMap } = buildExecutionGraph(nodes, edges);
     const results = new Map<string, string>();
+
+    // Create execution context
+    const context: ExecutionContext = {
+      source: options.source,
+      webhookData: options.webhookData,
+    };
 
     // Execute nodes level by level
     const levels = Array.from(executionLevels.keys()).sort();
@@ -42,7 +54,12 @@ export async function executeFlowApi(
           const instance = await schemaNode.initialize(node.data, {
             credentials,
           });
-          const result = await schemaNode.execute(instance, node.data, inputs);
+          const result = await schemaNode.execute(
+            instance,
+            node.data,
+            inputs,
+            context
+          );
           results.set(nodeId, result);
         })
       );

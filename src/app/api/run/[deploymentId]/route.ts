@@ -21,6 +21,7 @@ export async function POST(
 ) {
   const headersList = headers();
   const apiKey = headersList.get("x-api-key");
+  const webhookData = await request.json();
 
   // Get deployment and canvas
   const { data: deployment, error: deploymentError } = await supabase
@@ -77,11 +78,15 @@ export async function POST(
     }
   }
 
-  // Execute the flow
+  // Execute the flow with webhook context
   const result = await executeFlowApi(
     deployment.canvas.data.nodes,
     deployment.canvas.data.edges,
-    credentialsMap
+    credentialsMap,
+    {
+      source: "webhook",
+      webhookData,
+    }
   );
 
   if (!result.success) {

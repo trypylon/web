@@ -101,12 +101,18 @@ interface BaseNodeCommon {
   cleanup?: (nodeInstance: any) => Promise<void>;
 }
 
+export interface ExecutionContext {
+  source: "ui" | "api" | "webhook";
+  webhookData?: any;
+}
+
 interface ExecutorNode extends BaseNodeCommon {
   role: NodeRole.EXECUTOR;
   execute: (
     nodeInstance: any,
     nodeData?: NodeData,
-    inputs?: Record<InputType, string>
+    inputs?: Record<InputType, string>,
+    context?: ExecutionContext
   ) => Promise<any>;
 }
 

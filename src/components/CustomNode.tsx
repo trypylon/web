@@ -224,14 +224,46 @@ export function CustomNode({
 
           {/* Output Handles */}
           {Object.entries(nodeSchema.outputs).map(([outputType, config]) => {
-            // Only show JSON output if useJsonOutput is true
+            // Skip conditional checks for API Input/Output nodes
+            if (
+              nodeSchema.type === "APIInput" ||
+              nodeSchema.type === "APIOutput"
+            ) {
+              return (
+                <div
+                  key={outputType}
+                  className="relative flex items-center justify-between group"
+                >
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {outputType === OutputType.JSON
+                        ? "JSON Output"
+                        : "Text Output"}
+                    </div>
+                    {config.description && (
+                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                        {config.description}
+                      </div>
+                    )}
+                  </div>
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={outputType}
+                    className={`!w-3 !h-3 !-right-5 !bg-gray-400 hover:!bg-blue-500 transition-colors`}
+                    isConnectable={isConnectable}
+                  />
+                </div>
+              );
+            }
+
+            // Original conditional logic for other nodes
             if (
               outputType === OutputType.JSON &&
               !data.parameters?.useJsonOutput
             ) {
               return null;
             }
-            // Only show TEXT output if useJsonOutput is false
             if (
               outputType === OutputType.TEXT &&
               data.parameters?.useJsonOutput

@@ -13,6 +13,7 @@ import { InputType, NodeParameter } from "@/types/nodes";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { JsonSchemaDialog } from "./JsonSchemaDialog";
+import { JsonConfigDialog } from "./JsonConfigDialog";
 import { Button } from "@/components/ui/button";
 import { Code2 } from "lucide-react";
 
@@ -73,7 +74,6 @@ export function UnifiedInput({
   const commonProps = {
     onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
     onMouseUp: (e: React.MouseEvent) => e.stopPropagation(),
-    onClick: (e: React.MouseEvent) => e.stopPropagation(),
     onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation(),
   };
 
@@ -251,45 +251,36 @@ export function UnifiedInput({
         );
 
       case "json":
+        // Use JsonConfigDialog for API nodes, JsonSchemaDialog for LLM nodes
+        const isApiConfig = parameter.name === "mockInput";
+        const Dialog = isApiConfig ? JsonConfigDialog : JsonSchemaDialog;
         return withWrapper(
-          <>
+          <div className="flex items-center space-x-2">
             <Button
               variant="outline"
+              size="sm"
               className="w-full flex items-center justify-between"
-              onClick={() => setJsonDialogOpen(true)}
+              {...commonProps}
+              onClick={(e) => {
+                e.stopPropagation();
+                setJsonDialogOpen(true);
+              }}
             >
-              <span>Edit JSON Schema</span>
-              <Code2 className="w-4 h-4" />
+              <span className="truncate">
+                {value ? "Edit JSON" : "Add JSON"}
+              </span>
+              <Code2 className="w-4 h-4 opacity-50" />
             </Button>
-            <JsonSchemaDialog
+            <Dialog
               open={jsonDialogOpen}
               onOpenChange={setJsonDialogOpen}
-              value={
-                value || {
-                  name: "generate_response",
-                  description: "Generate a structured response",
-                  parameters: {
-                    type: "object",
-                    properties: {
-                      output: {
-                        type: "string",
-                        description: "The generated response",
-                      },
-                    },
-                    required: ["output"],
-                  },
-                }
-              }
+              value={value}
               onChange={onChange}
+              title={
+                isApiConfig ? "Edit Mock Request Body" : "Edit JSON Schema"
+              }
             />
-            {value && (
-              <div className="mt-2 text-xs text-gray-500">
-                Schema: {value.name} (
-                {Object.keys(value.parameters?.properties || {}).length}{" "}
-                properties)
-              </div>
-            )}
-          </>
+          </div>
         );
 
       case "textarea":
