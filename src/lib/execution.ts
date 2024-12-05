@@ -79,6 +79,9 @@ export async function executeFlowApi(
     if (options.source === "webhook" && outputs.length > 0) {
       try {
         const lastOutput = outputs[outputs.length - 1];
+        if (!lastOutput) {
+          return { success: true, output: {} };
+        }
         return {
           success: true,
           output: JSON.parse(lastOutput),
