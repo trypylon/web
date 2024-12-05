@@ -12,7 +12,7 @@ import {
 } from "@/types/nodes";
 import { ChatOpenAI } from "@langchain/openai";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { handleVectorStore } from "@/lib/llm";
+import { handleLLMInputs } from "@/lib/llm";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { createDebugLog } from "@/lib/debug";
 import { JsonOutputFunctionsParser } from "langchain/output_parsers";
@@ -158,43 +158,19 @@ export const OpenAINode: BaseNode = {
     const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
 
-    debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
+    // Use common input handler
+    const {
+      template,
+      inputValues,
+      debugLogs: inputDebugLogs,
+    } = await handleLLMInputs({
+      inputs,
+      promptText,
+      debugLogs: [],
+      llm: instance.llm as unknown as BaseLanguageModel,
+    });
 
-    // Build template and variables based on available inputs
-    let template = "{input}";
-    const inputValues: Record<string, string> = {
-      input: promptText,
-    };
-
-    if (inputs?.vectorstore) {
-      console.log("Processing vectorstore input");
-      const vectorStoreResponse = await handleVectorStore({
-        llm: instance.llm as unknown as BaseLanguageModel<any, any>,
-        vectorStoreInput: inputs.vectorstore,
-        userPrompt: promptText,
-        debugLogs: [],
-      });
-
-      template = vectorStoreResponse.template;
-      Object.assign(inputValues, vectorStoreResponse.inputValues);
-      debugLogs.push(...vectorStoreResponse.debugLogs);
-    }
-
-    // Add context if available
-    if (inputs?.context) {
-      const contextValue =
-        typeof inputs.context === "object"
-          ? JSON.stringify(inputs.context, null, 2)
-          : inputs.context;
-      template = `Additional Context:\n{context}\n\n${template}`;
-      inputValues.context = contextValue;
-    }
-
-    // Add memory if available
-    if (inputs?.memory) {
-      template = `Conversation History:\n{memory}\n\n${template}`;
-      inputValues.memory = inputs.memory;
-    }
+    debugLogs.push(...inputDebugLogs);
 
     // Create and format the prompt
     const promptTemplate = PromptTemplate.fromTemplate(template);
@@ -224,7 +200,6 @@ export const OpenAINode: BaseNode = {
       // Regular text response
       response = await instance.llm.invoke(formattedPrompt);
       response = response.content;
-
       debugLogs.push(createDebugLog("output", "LLM Response", response));
     }
 

@@ -64,26 +64,38 @@ function getNodeInputs(
   edges: Edge[],
   results: Map<string, string>
 ): Record<InputType, string> {
-  const inputs: Partial<Record<InputType, string>> = {};
+  const inputs: Partial<Record<InputType, string[]>> = {};
 
+  // First collect all inputs for each handle
   edges
     .filter((edge) => edge.target === nodeId)
     .forEach((edge) => {
       const sourceResult = results.get(edge.source);
       if (sourceResult && edge.targetHandle) {
-        // Parse the result if it's JSON
-        try {
-          // Check if it's a JSON string
-          JSON.parse(sourceResult);
-          inputs[edge.targetHandle as InputType] = sourceResult;
-        } catch {
-          // If not JSON, use as-is
-          inputs[edge.targetHandle as InputType] = sourceResult;
+        const handle = edge.targetHandle as InputType;
+        if (!inputs[handle]) {
+          inputs[handle] = [];
         }
+        inputs[handle]!.push(sourceResult);
       }
     });
 
-  return inputs as Record<InputType, string>;
+  // Then combine them into a single value for each handle
+  const combinedInputs: Record<InputType, string> = {} as Record<
+    InputType,
+    string
+  >;
+  Object.entries(inputs).forEach(([handle, values]) => {
+    if (handle === InputType.CONTEXT) {
+      // For context inputs, combine into a JSON array
+      combinedInputs[handle as InputType] = JSON.stringify(values);
+    } else {
+      // For other inputs, use the last value
+      combinedInputs[handle as InputType] = values![values!.length - 1];
+    }
+  });
+
+  return combinedInputs;
 }
 
 // Execute a single node

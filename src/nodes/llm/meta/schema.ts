@@ -12,7 +12,7 @@ import {
 } from "@/types/nodes";
 import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { handleVectorStore } from "@/lib/llm";
+import { handleLLMInputs } from "@/lib/llm";
 import { handleJsonOutput } from "@/lib/json";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { createDebugLog } from "@/lib/debug";
@@ -138,43 +138,19 @@ export const MetaNode: BaseNode = {
     const debugLogs: DebugLog[] = [];
     const promptText = inputs?.prompt || nodeData?.parameters?.prompt || "";
 
-    debugLogs.push(createDebugLog("input", "Initial Prompt", promptText));
+    // Use common input handler
+    const {
+      template,
+      inputValues,
+      debugLogs: inputDebugLogs,
+    } = await handleLLMInputs({
+      inputs,
+      promptText,
+      debugLogs: [],
+      llm: instance.llm as unknown as BaseLanguageModel,
+    });
 
-    // Build template and variables based on available inputs
-    let template = "{input}";
-    const inputValues: Record<string, string> = {
-      input: promptText,
-    };
-
-    if (inputs?.vectorstore) {
-      console.log("Processing vectorstore input");
-      const vectorStoreResponse = await handleVectorStore({
-        llm: instance.llm as unknown as BaseLanguageModel<any, any>,
-        vectorStoreInput: inputs.vectorstore,
-        userPrompt: promptText,
-        debugLogs: [],
-      });
-
-      template = vectorStoreResponse.template;
-      Object.assign(inputValues, vectorStoreResponse.inputValues);
-      debugLogs.push(...vectorStoreResponse.debugLogs);
-    }
-
-    // Add context if available
-    if (inputs?.context) {
-      const contextValue =
-        typeof inputs.context === "object"
-          ? JSON.stringify(inputs.context, null, 2)
-          : inputs.context;
-      template = `Additional Context:\n{context}\n\n${template}`;
-      inputValues.context = contextValue;
-    }
-
-    // Add memory if available
-    if (inputs?.memory) {
-      template = `Conversation History:\n{memory}\n\n${template}`;
-      inputValues.memory = inputs.memory;
-    }
+    debugLogs.push(...inputDebugLogs);
 
     // Create and format the prompt
     const promptTemplate = PromptTemplate.fromTemplate(template);
@@ -195,7 +171,7 @@ export const MetaNode: BaseNode = {
         llm: instance.llm as unknown as BaseLanguageModel,
         jsonSchema,
         prompt: formattedPrompt,
-        debugLogs,
+        debugLogs: [],
       });
       response = jsonResponse.response;
       debugLogs.push(...jsonResponse.debugLogs);
