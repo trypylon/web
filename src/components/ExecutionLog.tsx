@@ -94,6 +94,11 @@ export function ExecutionLog({ steps }: ExecutionLogProps) {
   const [debugMode, setDebugMode] = useState(false);
 
   const sortedSteps = [...steps].sort((a, b) => {
+    if (a.nodeName.includes("API Input") && !b.nodeName.includes("API Input"))
+      return -1;
+    if (!a.nodeName.includes("API Input") && b.nodeName.includes("API Input"))
+      return 1;
+
     const aHasStarted = a.status === "running" || a.status === "completed";
     const bHasStarted = b.status === "running" || b.status === "completed";
 
