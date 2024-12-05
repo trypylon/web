@@ -13,6 +13,7 @@ import "reactflow/dist/style.css";
 
 import { Sidebar } from "./Sidebar/index";
 import { CustomNode } from "./CustomNode";
+import { CustomEdge } from "./CustomEdge";
 import { useFlowStore } from "@/store/flowStore";
 import { Button } from "./ui/button";
 import {
@@ -41,6 +42,10 @@ const nodeTypes = {
   custom: CustomNode,
 };
 
+const edgeTypes = {
+  default: CustomEdge,
+};
+
 // Custom edge style with animation
 const edgeOptions = {
   style: { strokeWidth: 2 },
@@ -51,6 +56,7 @@ const edgeOptions = {
   },
   animated: true,
   className: "animated-edge",
+  type: "default", // Set CustomEdge as default edge type
 };
 
 function FlowEditor() {
@@ -201,6 +207,7 @@ function FlowEditor() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           defaultEdgeOptions={edgeOptions}
           fitView
           className="bg-dot-pattern"
