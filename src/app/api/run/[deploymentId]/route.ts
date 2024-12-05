@@ -21,7 +21,16 @@ export async function POST(
 ) {
   const headersList = headers();
   const apiKey = headersList.get("x-api-key");
-  const webhookData = await request.json();
+
+  // Safely parse request body
+  let webhookData = {};
+  try {
+    if (request.body) {
+      webhookData = await request.json();
+    }
+  } catch (error) {
+    console.log("Failed to parse request body, using empty object");
+  }
 
   // Get deployment and canvas
   const { data: deployment, error: deploymentError } = await supabase

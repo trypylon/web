@@ -4,7 +4,7 @@ import { InputType, ExecutionContext } from "@/types/nodes";
 
 interface ExecutionResult {
   success: boolean;
-  output?: string;
+  output?: any;
   error?: string;
 }
 
@@ -70,11 +70,29 @@ export async function executeFlowApi(
       (node) => !edges.some((edge) => edge.source === node.id)
     );
 
-    // Return the results of end nodes
+    // Get the results of end nodes
     const outputs = endNodes
       .map((node) => results.get(node.id))
       .filter(Boolean);
 
+    // If this is a webhook call, try to parse the last output as JSON
+    if (options.source === "webhook" && outputs.length > 0) {
+      try {
+        const lastOutput = outputs[outputs.length - 1];
+        return {
+          success: true,
+          output: JSON.parse(lastOutput),
+        };
+      } catch (error) {
+        // If parsing fails, return the raw output
+        return {
+          success: true,
+          output: outputs[outputs.length - 1],
+        };
+      }
+    }
+
+    // For UI/API calls, join outputs with newlines
     return {
       success: true,
       output: outputs.join("\n"),

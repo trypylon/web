@@ -53,8 +53,30 @@ export const WebhookInputNode: BaseNode = {
   ) {
     try {
       // If we're being called from a webhook endpoint
-      if (context?.source === "webhook" && context.webhookData) {
-        return JSON.stringify(context.webhookData);
+      if (context?.source === "webhook") {
+        const webhookData = context.webhookData;
+
+        // Handle different webhook data formats
+        if (typeof webhookData === "string") {
+          // If it's a string, try to parse it as JSON, otherwise wrap it in a body field
+          try {
+            return JSON.stringify(JSON.parse(webhookData));
+          } catch {
+            return JSON.stringify({ body: webhookData });
+          }
+        }
+
+        // If it's an object with a body field, use it directly
+        if (webhookData && typeof webhookData === "object") {
+          if ("body" in webhookData) {
+            return JSON.stringify(webhookData);
+          }
+          // If no body field, wrap the entire object in a body field
+          return JSON.stringify({ body: webhookData });
+        }
+
+        // If no data or invalid type, return empty body
+        return JSON.stringify({ body: "" });
       }
 
       // Otherwise we're in the UI or normal API execution, use mock input
