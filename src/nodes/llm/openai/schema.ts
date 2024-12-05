@@ -182,8 +182,12 @@ export const OpenAINode: BaseNode = {
 
     // Add context if available
     if (inputs?.context) {
+      const contextValue =
+        typeof inputs.context === "object"
+          ? JSON.stringify(inputs.context, null, 2)
+          : inputs.context;
       template = `Additional Context:\n{context}\n\n${template}`;
-      inputValues.context = inputs.context;
+      inputValues.context = contextValue;
     }
 
     // Add memory if available

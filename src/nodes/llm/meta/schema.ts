@@ -13,6 +13,7 @@ import {
 import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { handleVectorStore } from "@/lib/llm";
+import { handleJsonOutput } from "@/lib/json";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { createDebugLog } from "@/lib/debug";
 
@@ -54,6 +55,25 @@ export const MetaNode: BaseNode = {
       description: "Controls randomness (0-1)",
       validation: z.number().min(0).max(1),
     },
+    {
+      name: "useJsonOutput",
+      label: "Format Output as JSON",
+      type: "boolean",
+      default: false,
+      description: "Whether to format the output as a specific JSON structure",
+    },
+    {
+      name: "jsonSchema",
+      label: "JSON Schema",
+      type: "json",
+      description: "The JSON schema that defines the output structure",
+      conditions: [
+        {
+          field: "useJsonOutput",
+          value: true,
+        },
+      ],
+    },
   ],
   credentials: [
     {
@@ -85,24 +105,30 @@ export const MetaNode: BaseNode = {
       description: "The generated text response from the model",
       schema: z.string(),
     },
+    [OutputType.JSON]: {
+      description: "The structured JSON response from the model",
+      schema: z.any(), // Dynamic schema based on user input
+    },
   },
 
   async initialize(nodeData: NodeData, options: NodeInitOptions) {
     const model = nodeData.parameters.model || "llama2:7b-chat";
     const temperature = nodeData.parameters.temperature || 0.7;
-    const baseUrl = options.credentials?.OLLAMA_URL || "http://localhost:11434";
-    console.log({ baseUrl });
 
-    return new ChatOllama({
+    const llm = new ChatOllama({
       model,
       temperature,
-      baseUrl,
+      baseUrl: options.credentials?.OLLAMA_URL || "http://localhost:11434",
       maxRetries: 3,
     });
+
+    return { llm };
   },
 
   async execute(
-    instance: ChatOllama,
+    instance: {
+      llm: ChatOllama;
+    },
     nodeData?: NodeData,
     inputs?: Record<InputType, string>
   ) {
@@ -123,7 +149,7 @@ export const MetaNode: BaseNode = {
     if (inputs?.vectorstore) {
       console.log("Processing vectorstore input");
       const vectorStoreResponse = await handleVectorStore({
-        llm: instance as unknown as BaseLanguageModel<any, any>,
+        llm: instance.llm as unknown as BaseLanguageModel<any, any>,
         vectorStoreInput: inputs.vectorstore,
         userPrompt: promptText,
         debugLogs: [],
@@ -158,15 +184,32 @@ export const MetaNode: BaseNode = {
       createDebugLog("intermediate", "Final Formatted Prompt", formattedPrompt)
     );
 
-    const response = await instance.invoke(formattedPrompt);
-    const content = response.content as string;
+    // Get response from LLM
+    let response;
+    const useJsonOutput = nodeData?.parameters?.useJsonOutput || false;
+    const jsonSchema = nodeData?.parameters?.jsonSchema;
 
-    debugLogs.push(createDebugLog("output", "LLM Response", content));
+    if (useJsonOutput && jsonSchema) {
+      // Handle JSON output
+      const jsonResponse = await handleJsonOutput({
+        llm: instance.llm as unknown as BaseLanguageModel,
+        jsonSchema,
+        prompt: formattedPrompt,
+        debugLogs,
+      });
+      response = jsonResponse.response;
+      debugLogs.push(...jsonResponse.debugLogs);
+    } else {
+      // Regular text response
+      response = await instance.llm.invoke(formattedPrompt);
+      response = response.content;
+      debugLogs.push(createDebugLog("output", "LLM Response", response));
+    }
 
     // Update the nodeData with debug logs
     updatedNodeData._debugLogs = debugLogs;
     Object.assign(nodeData || {}, { _debugLogs: debugLogs });
 
-    return content;
+    return response;
   },
 };
