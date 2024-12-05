@@ -39,10 +39,33 @@ export async function handleLLMInputs({
   // Handle vector store input if available
   if (inputs?.vectorstore && llm) {
     console.log("Processing vectorstore input");
+
+    // Format context if available
+    let contextStr = "";
+    if (inputs.context) {
+      try {
+        const parsed = JSON.parse(inputs.context);
+        if (Array.isArray(parsed)) {
+          contextStr = parsed
+            .map((ctx) => (typeof ctx === "object" ? JSON.stringify(ctx) : ctx))
+            .join("\n");
+        } else {
+          contextStr =
+            typeof parsed === "object"
+              ? JSON.stringify(parsed)
+              : parsed.toString();
+        }
+      } catch {
+        contextStr = inputs.context;
+      }
+    }
+
     const vectorStoreResponse = await handleVectorStore({
       llm,
       vectorStoreInput: inputs.vectorstore,
-      userPrompt: promptText,
+      userPrompt: contextStr
+        ? `Context: ${contextStr}\nPrompt: ${promptText}`
+        : promptText,
       debugLogs: [],
     });
 
@@ -258,35 +281,10 @@ async function getVectorStore(
 
 // Helper function to format documents based on vector store type
 function formatDocs(docs: any[], storeType: string) {
-  switch (storeType) {
-    case "pinecone":
-      return docs
-        .map((doc) => {
-          const metadata = doc.metadata;
-          return `Title: ${metadata.title} (${metadata.year})
-Box Office: $${metadata["box-office"].toLocaleString()}
-Genre: ${metadata.genre}
-Summary: ${metadata.summary}`;
-        })
-        .join("\n\n");
-    case "qdrant":
-      return docs
-        .map((doc) => {
-          const metadata = doc.metadata;
-          return `Title: ${metadata.title || "Untitled"}
-${metadata.description || doc.pageContent}
-${Object.entries(metadata)
-  .filter(([key]) => !["title", "description"].includes(key))
-  .map(([key, value]) => `${key}: ${value}`)
-  .join("\n")}`;
-        })
-        .join("\n\n");
-    default:
-      return docs
-        .map(
-          (doc) => `Content: ${doc.pageContent}
+  return docs
+    .map(
+      (doc) => `Content: ${doc.pageContent}
 Metadata: ${JSON.stringify(doc.metadata)}`
-        )
-        .join("\n\n");
-  }
+    )
+    .join("\n\n");
 }
