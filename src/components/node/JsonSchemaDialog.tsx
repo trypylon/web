@@ -23,19 +23,12 @@ const defaultSchema = {
   parameters: {
     type: "object",
     properties: {
-      summary: {
+      output: {
         type: "string",
-        description: "A brief summary of the response",
-      },
-      points: {
-        type: "array",
-        items: {
-          type: "string",
-        },
-        description: "Key points from the response",
+        description: "The generated response",
       },
     },
-    required: ["summary", "points"],
+    required: ["output"],
   },
 };
 

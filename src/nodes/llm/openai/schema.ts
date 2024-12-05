@@ -75,25 +75,6 @@ export const OpenAINode: BaseNode = {
           value: true,
         },
       ],
-      default: {
-        name: "generate_response",
-        description: "Generate a structured response",
-        parameters: {
-          type: "object",
-          properties: {
-            summary: {
-              type: "string",
-              description: "A brief summary of the response",
-            },
-            points: {
-              type: "array",
-              items: { type: "string" },
-              description: "Key points from the response",
-            },
-          },
-          required: ["summary", "points"],
-        },
-      },
     },
   ],
   credentials: [

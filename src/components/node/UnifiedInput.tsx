@@ -206,7 +206,7 @@ export function UnifiedInput({
         );
 
       case "boolean":
-        return withWrapper(
+        return (
           <div className="flex items-center space-x-2">
             <Switch
               checked={value ?? parameter.default ?? false}
@@ -214,6 +214,11 @@ export function UnifiedInput({
               {...commonProps}
             />
             <Label>{label}</Label>
+            {description && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {description}
+              </p>
+            )}
           </div>
         );
 
@@ -263,14 +268,24 @@ export function UnifiedInput({
                 value || {
                   name: "generate_response",
                   description: "Generate a structured response",
-                  properties: [],
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      output: {
+                        type: "string",
+                        description: "The generated response",
+                      },
+                    },
+                    required: ["output"],
+                  },
                 }
               }
               onChange={onChange}
             />
             {value && (
               <div className="mt-2 text-xs text-gray-500">
-                Schema: {value.name} ({value.properties?.length || 0}{" "}
+                Schema: {value.name} (
+                {Object.keys(value.parameters?.properties || {}).length}{" "}
                 properties)
               </div>
             )}

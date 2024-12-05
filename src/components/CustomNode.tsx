@@ -222,40 +222,6 @@ export function CustomNode({
             Outputs
           </h3>
 
-          {/* Output Format Toggle */}
-          {nodeSchema.parameters.find((p) => p.name === "useJsonOutput") && (
-            <div className="space-y-4">
-              <UnifiedInput
-                parameter={
-                  nodeSchema.parameters.find((p) => p.name === "useJsonOutput")!
-                }
-                label="Format Output as JSON"
-                value={data.parameters?.useJsonOutput}
-                onChange={(value) =>
-                  handleParameterChange("useJsonOutput", value)
-                }
-              />
-
-              {/* JSON Schema Editor (only shown when useJsonOutput is true) */}
-              {data.parameters?.useJsonOutput && (
-                <div className="space-y-2 border-l-2 border-blue-500 pl-3">
-                  <UnifiedInput
-                    parameter={
-                      nodeSchema.parameters.find(
-                        (p) => p.name === "jsonSchema"
-                      )!
-                    }
-                    label="JSON Schema"
-                    value={data.parameters?.jsonSchema}
-                    onChange={(value) =>
-                      handleParameterChange("jsonSchema", value)
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Output Handles */}
           {Object.entries(nodeSchema.outputs).map(([outputType, config]) => {
             // Only show JSON output if useJsonOutput is true
@@ -301,6 +267,38 @@ export function CustomNode({
             );
           })}
         </div>
+
+        {/* JSON Format Section */}
+        {nodeSchema.parameters.find((p) => p.name === "useJsonOutput") && (
+          <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+            <UnifiedInput
+              parameter={
+                nodeSchema.parameters.find((p) => p.name === "useJsonOutput")!
+              }
+              label="Format as JSON"
+              value={data.parameters?.useJsonOutput}
+              onChange={(value) =>
+                handleParameterChange("useJsonOutput", value)
+              }
+            />
+
+            {/* JSON Schema Editor (only shown when useJsonOutput is true) */}
+            {data.parameters?.useJsonOutput && (
+              <div className="mt-4 space-y-2 border-l-2 border-blue-500 pl-3">
+                <UnifiedInput
+                  parameter={
+                    nodeSchema.parameters.find((p) => p.name === "jsonSchema")!
+                  }
+                  label="JSON Schema"
+                  value={data.parameters?.jsonSchema}
+                  onChange={(value) =>
+                    handleParameterChange("jsonSchema", value)
+                  }
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
